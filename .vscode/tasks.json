@@ -1,0 +1,64 @@
+{
+  "version": "2.0.0",
+  "presentation": {
+    "echo": false,
+    "reveal": "always",
+    "focus": false,
+    "panel": "dedicated",
+    "showReuseMessage": true
+  },
+  "tasks": [
+    {
+      "label": "Create terminals",
+      "dependsOn": [
+        "Database",
+        "API",
+        "Workers"
+      ],
+      "runOptions": {
+        "runOn": "folderOpen"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Database",
+      "type": "shell",
+      "command": "task",
+      "args": [
+        "db"
+      ],
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "RiverUI",
+      "type": "shell",
+      "command": "task",
+      "args": [
+        "river-ui"
+      ],
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "API",
+      "type": "shell",
+      "command": "task",
+      "args": [
+        "api"
+      ],
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Workers",
+      "type": "shell",
+      "command": "task",
+      "args": [
+        "workers"
+      ],
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ]
+}

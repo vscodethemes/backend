@@ -1,0 +1,67 @@
+version: "3"
+
+env: 
+  DB_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+
+tasks:
+  api:
+    desc: Start the api server.
+    # watch: true
+    # sources:
+    #   - '**/*.go'
+    deps:
+      - generate
+      - db-wait
+    cmds:
+      - go run cmd/api/main.go --db-url "$DB_URL&application_name=api" --port $PORT 
+    env:
+      PORT: 8080
+  
+  workers:
+    desc: Start the workers server.
+    deps:
+      - generate
+      - db-wait
+    cmds:
+      - go run cmd/workers/main.go --db-url "$DB_URL&application_name=workers"
+
+  generate:
+    desc: Generate OpenAPI server.
+    cmds:
+      - go generate ./...
+  
+  db:
+    desc: Start the database
+    cmds:
+      - docker-compose up db
+
+  db-wait:
+    desc: Wait for the database to be ready
+    cmds:
+      - go run github.com/amacneil/dbmate -u $DB_URL wait 
+  
+  migrate: 
+    desc: Run migrations
+    cmds:
+      - go run github.com/amacneil/dbmate -u $DB_URL -d "./db/migrations" up
+
+  create-migration: 
+    desc: Create a new migration file
+    cmds:
+      - go run github.com/amacneil/dbmate -d "./db/migrations" new {{.CLI_ARGS}}
+
+  river:
+    desc: Run the river command
+    cmds:
+      -  go run github.com/riverqueue/river/cmd/river {{.CLI_ARGS}}
+
+  river-ui:
+    desc: Start the riverui server
+    cmds:
+      - docker-compose up riverui
+  
+  lint:
+    desc: Run linters
+    cmds:
+      - go run github.com/golangci/golangci-lint/cmd/golangci-lint run
+      

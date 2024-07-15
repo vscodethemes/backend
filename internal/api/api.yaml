@@ -1,0 +1,60 @@
+openapi: "3.0.0"
+
+info:
+  version: 1.0.0
+  title: VS Code Themes API
+
+paths:
+  /extensions/{slug}/sync:
+    post:
+      description: Sync an extension from the VS Code Marketplace
+      operationId: syncExtensionBySlug
+      parameters:
+        - name: slug
+          in: path
+          description: The slug of the extension to sync
+          example: sdras.night-owl
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Returns the sync job state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExtensionSyncJob'
+
+components:
+  schemas:
+    ExtensionSyncJob:
+      type: object
+      required:
+        - id
+        - state
+        - created_at
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: ID of the sync job
+        state:
+          type: string
+          description: State of the sync job
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp the job was created
+
+    Error:
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          format: int32
+          description: Error code
+        message:
+          type: string
+          description: Error message
