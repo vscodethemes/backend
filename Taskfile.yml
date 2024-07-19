@@ -13,7 +13,7 @@ tasks:
       - generate
       - db-wait
     cmds:
-      - go run cmd/api/main.go --db-url "$DB_URL&application_name=api" --port $PORT 
+      - go run cmd/api/main.go --database-url "$DB_URL&application_name=api" --port $PORT 
     env:
       PORT: 8080
   
@@ -23,7 +23,7 @@ tasks:
       - generate
       - db-wait
     cmds:
-      - go run cmd/workers/main.go --db-url "$DB_URL&application_name=workers"
+      - go run cmd/workers/main.go --database-url "$DB_URL&application_name=workers"
 
   generate:
     desc: Generate OpenAPI server.

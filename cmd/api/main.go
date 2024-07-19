@@ -2,62 +2,71 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"log"
 	"net"
-	"os"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
-	middleware "github.com/oapi-codegen/echo-middleware"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/vscodethemes/backend/internal/api"
+	"github.com/vscodethemes/backend/internal/api/handlers"
+
+	"github.com/danielgtaylor/huma/v2/adapters/humaecho"
+	_ "github.com/danielgtaylor/huma/v2/formats/cbor"
+	"github.com/danielgtaylor/huma/v2/humacli"
 )
 
+// Options for the CLI.
+type Options struct {
+	Host        string `help:"Host to listen on" default:"0.0.0.0"`
+	Port        int    `help:"Port to listen on" default:"8080"`
+	DatabaseURL string `help:"Database URL" required:"true"`
+}
+
 func main() {
-	port := flag.String("port", "8080", "Port for test HTTP server")
-	dbUrl := flag.String("db-url", "", "Database URL")
-	flag.Parse()
+	// Create a CLI app which takes a port option.
+	cli := humacli.New(func(hooks humacli.Hooks, options *Options) {
+		// Create a new database pool.
+		dbPool, err := pgxpool.New(context.Background(), options.DatabaseURL)
+		if err != nil {
+			log.Fatal(fmt.Errorf("failed to create db pool: %w", err))
+		}
 
-	if *dbUrl == "" {
-		fmt.Fprintf(os.Stderr, "Database URL is required\n")
-		os.Exit(1)
-	}
+		// Create insert-only river client.
+		riverClient, err := river.NewClient(riverpgxv5.New(dbPool), &river.Config{})
+		if err != nil {
+			log.Fatal(fmt.Errorf("failed to create river client: %w", err))
+		}
 
-	fmt.Println("dbUrl", *dbUrl)
+		// Create a new router & API
+		e := echo.New()
+		e.Use(echomiddleware.Logger())
+		humaApi := humaecho.New(e, huma.DefaultConfig("VS Code Themes API", "1.0.0"))
 
-	dbPool, err := pgxpool.New(context.Background(), *dbUrl)
-	if err != nil {
-		log.Fatal(fmt.Errorf("failed to create db pool: %w", err))
-	}
-	defer dbPool.Close()
+		api.RegisterRoutes(humaApi, handlers.Handler{
+			DBPool:      dbPool,
+			RiverClient: riverClient,
+		})
 
-	// Insert-only river client.
-	riverClient, err := river.NewClient(riverpgxv5.New(dbPool), &river.Config{})
-	if err != nil {
-		log.Fatal(fmt.Errorf("failed to create river client: %w", err))
-	}
+		// TODO: Graceful shutdown.
+		// https://echo.labstack.com/docs/cookbook/graceful-shutdown
+		// https://huma.rocks/how-to/graceful-shutdown
 
-	swagger, err := api.GetSwagger()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error loading swagger spec\n: %s", err)
-		os.Exit(1)
-	}
+		// Tell the CLI how to start your server.
+		hooks.OnStart(func() {
+			port := fmt.Sprintf("%d", options.Port)
+			e.Logger.Fatal(e.Start(net.JoinHostPort(options.Host, port)))
+		})
 
-	server := api.NewServer(dbPool, riverClient)
+		hooks.OnStop(func() {
+			dbPool.Close()
+		})
+	})
 
-	e := echo.New()
-	e.Use(echomiddleware.Logger())
-	e.Use(middleware.OapiRequestValidator(swagger))
-
-	api.RegisterHandlers(e, server)
-
-	// TODO: Graceful shutdown.
-	// https://echo.labstack.com/docs/cookbook/graceful-shutdown
-
-	// And we serve HTTP until the world ends.
-	e.Logger.Fatal(e.Start(net.JoinHostPort("0.0.0.0", *port)))
+	// Run the CLI. When passed no commands, it starts the server.
+	cli.Run()
 }

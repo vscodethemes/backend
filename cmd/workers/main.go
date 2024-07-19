@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	dbUrl := flag.String("db-url", "", "Database URL")
+	dbUrl := flag.String("database-url", "", "Database URL")
 	flag.Parse()
 
 	if *dbUrl == "" {
