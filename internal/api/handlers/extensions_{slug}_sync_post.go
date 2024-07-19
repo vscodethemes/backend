@@ -8,6 +8,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/jackc/pgx/v5"
+	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 	"github.com/vscodethemes/backend/internal/db"
 	"github.com/vscodethemes/backend/internal/workers"
@@ -46,7 +47,9 @@ func (h Handler) SyncExtensionBySlug(ctx context.Context, input *SyncExtensionIn
 	err := db.Tx(ctx, h.DBPool, func(tx pgx.Tx) error {
 		result, err := h.RiverClient.InsertTx(ctx, tx, workers.SyncExtensionArgs{
 			Slug: input.Slug,
-		}, nil)
+		}, &river.InsertOpts{
+			MaxAttempts: 10,
+		})
 		if err != nil {
 			return fmt.Errorf("failed to insert job: %w", err)
 		}
@@ -60,10 +63,12 @@ func (h Handler) SyncExtensionBySlug(ctx context.Context, input *SyncExtensionIn
 		return nil, fmt.Errorf("failed to sync extension: %w", err)
 	}
 
+	if job == nil {
+		return nil, huma.NewError(http.StatusNotFound, "Job not found")
+	}
+
 	resp := &SyncExtensionOutput{}
-	resp.Body.Job.Id = job.ID
-	resp.Body.Job.State = string(job.State)
-	resp.Body.Job.CreatedAt = job.CreatedAt
+	resp.Body.Job = mapRiverJobToJob(*job)
 
 	return resp, nil
 }

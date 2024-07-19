@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
+
+	"github.com/vscodethemes/backend/internal/marketplace/qo"
 )
 
 type Client struct {
@@ -38,9 +41,9 @@ func NewClient(opts ...ClientOption) *Client {
 }
 
 type QueryBody struct {
-	AssetTypes *string        `json:"assetTypes"`
-	Filters    []QueryOptions `json:"filters"`
-	Flags      int            `json:"flags"`
+	AssetTypes *string           `json:"assetTypes"`
+	Filters    []qo.QueryOptions `json:"filters"`
+	Flags      int               `json:"flags"`
 }
 
 type QueryResponse struct {
@@ -52,56 +55,95 @@ type QueryResult struct {
 }
 
 type ExtensionResult struct {
-	Publisher struct {
-		PublisherID   string `json:"publisherId"`
-		PublisherName string `json:"publisherName"`
-		DisplayName   string `json:"displayName"`
-		Flags         string `json:"flags"`
-	} `json:"publisher"`
-	ExtensionID      string `json:"extensionId"`
-	ExtensionName    string `json:"extensionName"`
-	DisplayName      string `json:"displayName"`
-	Flags            string `json:"flags"`
-	LastUpdated      string `json:"lastUpdated"`
-	PublishedDate    string `json:"publishedDate"`
-	ReleaseDate      string `json:"releaseDate"`
-	ShortDescription string `json:"shortDescription"`
-	Versions         []struct {
-		Version     string `json:"version"`
-		Flags       string `json:"flags"`
-		LastUpdated string `json:"lastUpdated"`
-		Files       []struct {
-			AssetType string `json:"assetType"`
-			Source    string `json:"source"`
-		} `json:"files"`
-		Properties []struct {
-			Key   string `json:"key"`
-			Value string `json:"value"`
-		} `json:"properties"`
-		AssetURI         string `json:"assetUri"`
-		FallbackAssetURI string `json:"fallbackAssetUri"`
-	} `json:"versions"`
-	Categories  []string `json:"categories"`
-	Tags        []string `json:"tags"`
-	Stastistics []struct {
-		StatisticName string  `json:"statisticName"`
-		Value         float64 `json:"value"`
-	} `json:"statistics"`
-	InstallationTargets []struct {
-		Target        string `json:"target"`
-		TargetVersion string `json:"targetVersion"`
-	} `json:"installationTargets"`
-	DeploymentType int `json:"deploymentType"`
+	Publisher           ExtensionPublisherResult            `json:"publisher"`
+	ExtensionID         string                              `json:"extensionId"`
+	ExtensionName       string                              `json:"extensionName"`
+	DisplayName         string                              `json:"displayName"`
+	Flags               string                              `json:"flags"`
+	LastUpdated         string                              `json:"lastUpdated"`
+	PublishedDate       string                              `json:"publishedDate"`
+	ReleaseDate         string                              `json:"releaseDate"`
+	ShortDescription    string                              `json:"shortDescription"`
+	Versions            []ExtensionVersionResult            `json:"versions"`
+	Categories          []string                            `json:"categories"`
+	Tags                []string                            `json:"tags"`
+	Stastistics         []ExtensionStatisticsResult         `json:"statistics"`
+	InstallationTargets []ExtensionInstallationTargetResult `json:"installationTargets"`
+	DeploymentType      int                                 `json:"deploymentType"`
 }
 
-func (m Client) NewQuery(ctx context.Context, opts ...QueryOption) ([]ExtensionResult, error) {
+type ExtensionPublisherResult struct {
+	PublisherID   string `json:"publisherId"`
+	PublisherName string `json:"publisherName"`
+	DisplayName   string `json:"displayName"`
+	Flags         string `json:"flags"`
+}
+
+type ExtensionVersionResult struct {
+	Version     string    `json:"version"`
+	Flags       string    `json:"flags"`
+	LastUpdated time.Time `json:"lastUpdated"`
+	Files       []struct {
+		AssetType string `json:"assetType"`
+		Source    string `json:"source"`
+	} `json:"files"`
+	Properties []struct {
+		Key   string `json:"key"`
+		Value string `json:"value"`
+	} `json:"properties"`
+	AssetURI         string `json:"assetUri"`
+	FallbackAssetURI string `json:"fallbackAssetUri"`
+}
+
+type ExtensionStatisticsResult struct {
+	StatisticName string  `json:"statisticName"`
+	Value         float64 `json:"value"`
+}
+
+type ExtensionInstallationTargetResult struct {
+	Target        string `json:"target"`
+	TargetVersion string `json:"targetVersion"`
+}
+
+func (e ExtensionResult) GetLatestVersion() *ExtensionVersionResult {
+	var latestVersion *ExtensionVersionResult
+	for _, version := range e.Versions {
+		if latestVersion == nil {
+			latestVersion = &version
+			continue
+		}
+
+		if version.LastUpdated.After(latestVersion.LastUpdated) {
+			latestVersion = &version
+		}
+	}
+
+	return latestVersion
+}
+
+func (e ExtensionResult) GetPackageURL() string {
+	latestVersion := e.GetLatestVersion()
+	if latestVersion == nil {
+		return ""
+	}
+
+	for _, file := range latestVersion.Files {
+		if file.AssetType == "Microsoft.VisualStudio.Services.VSIXPackage" {
+			return file.Source
+		}
+	}
+
+	return ""
+}
+
+func (m Client) NewQuery(ctx context.Context, opts ...qo.QueryOption) ([]ExtensionResult, error) {
 	// Default query options.
-	queryOptions := &QueryOptions{
+	queryOptions := &qo.QueryOptions{
 		PageNumber: 1,
 		PageSize:   100,
-		SortBy:     SortByLastUpdated,
-		Direction:  DirectionAsc,
-		Criteria:   []QueryOptionCriteria{},
+		SortBy:     qo.SortByLastUpdated,
+		Direction:  qo.DirectionAsc,
+		Criteria:   []qo.QueryOptionCriteria{},
 	}
 
 	// Apply option overrides.
@@ -111,7 +153,7 @@ func (m Client) NewQuery(ctx context.Context, opts ...QueryOption) ([]ExtensionR
 
 	// Build the query body.
 	reqBody := QueryBody{
-		Filters: []QueryOptions{*queryOptions},
+		Filters: []qo.QueryOptions{*queryOptions},
 		Flags:   870, // TODO: Do we need this?
 	}
 

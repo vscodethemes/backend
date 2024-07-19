@@ -23,7 +23,7 @@ tasks:
       - generate
       - db-wait
     cmds:
-      - go run cmd/workers/main.go --database-url "$DB_URL&application_name=workers"
+      - go run cmd/workers/main.go --database-url "$DB_URL&application_name=workers" --dir ./data --disable-cleanup
 
   generate:
     desc: Generate OpenAPI server.

@@ -16,6 +16,8 @@ import (
 
 func main() {
 	dbUrl := flag.String("database-url", "", "Database URL")
+	dir := flag.String("dir", "/tmp", "Directory")
+	disableCleanup := flag.Bool("disable-cleanup", false, "Disable cleanup")
 	flag.Parse()
 
 	if *dbUrl == "" {
@@ -30,7 +32,7 @@ func main() {
 
 	// Register Workers.
 	workersRegistry := river.NewWorkers()
-	err = workers.RegisterWorkers(workersRegistry)
+	err = workers.RegisterWorkers(workersRegistry, *dir, *disableCleanup)
 	if err != nil {
 		log.Fatal(fmt.Errorf("failed to register workers: %w", err))
 	}

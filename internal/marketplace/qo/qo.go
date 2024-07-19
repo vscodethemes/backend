@@ -1,4 +1,4 @@
-package marketplace
+package qo
 
 type QueryOptions struct {
 	PageNumber int                   `json:"pageNumber"`

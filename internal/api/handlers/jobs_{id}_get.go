@@ -22,7 +22,7 @@ var GetJobByIDOperation = huma.Operation{
 }
 
 type GetJobInput struct {
-	ID int64 `path:"id" example:"1" doc:"The ID of the job"`
+	ID int64 `path:"id" example:"0" doc:"The ID of the job"`
 }
 
 type GetJobOutput struct {
@@ -32,9 +32,20 @@ type GetJobOutput struct {
 }
 
 type Job struct {
-	Id        int64     `json:"id"`
-	State     string    `json:"state"`
-	CreatedAt time.Time `json:"created_at"`
+	ID          int64             `json:"id"`
+	Attempt     int               `json:"attempt"`
+	AttemptedAt *time.Time        `json:"attemptedAt"`
+	CreatedAt   time.Time         `json:"createdAt"`
+	Errors      []JobAttemptError `json:"errors"`
+	FinalizedAt *time.Time        `json:"finalizedAt"`
+	MaxAttempts int               `json:"maxAttempts"`
+	State       string            `json:"state"`
+}
+
+type JobAttemptError struct {
+	At      time.Time `json:"at"`
+	Attempt int       `json:"attempt"`
+	Error   string    `json:"error"`
 }
 
 func (h Handler) GetJobByID(ctx context.Context, input *GetJobInput) (*GetJobOutput, error) {
@@ -47,10 +58,34 @@ func (h Handler) GetJobByID(ctx context.Context, input *GetJobInput) (*GetJobOut
 		}
 	}
 
+	if job == nil {
+		return nil, huma.NewError(http.StatusNotFound, "Job not found")
+	}
+
 	resp := &GetJobOutput{}
-	resp.Body.Job.Id = job.ID
-	resp.Body.Job.State = string(job.State)
-	resp.Body.Job.CreatedAt = job.CreatedAt
+	resp.Body.Job = mapRiverJobToJob(*job)
 
 	return resp, nil
+}
+
+func mapRiverJobToJob(riverJob rivertype.JobRow) Job {
+	job := Job{
+		ID:          riverJob.ID,
+		Attempt:     riverJob.Attempt,
+		AttemptedAt: riverJob.AttemptedAt,
+		CreatedAt:   riverJob.CreatedAt,
+		FinalizedAt: riverJob.FinalizedAt,
+		MaxAttempts: riverJob.MaxAttempts,
+		State:       string(riverJob.State),
+	}
+
+	for _, riverError := range riverJob.Errors {
+		job.Errors = append(job.Errors, JobAttemptError{
+			At:      riverError.At,
+			Attempt: riverError.Attempt,
+			Error:   riverError.Error,
+		})
+	}
+
+	return job
 }

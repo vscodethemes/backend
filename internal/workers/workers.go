@@ -5,9 +5,11 @@ import (
 	"github.com/vscodethemes/backend/internal/marketplace"
 )
 
-func RegisterWorkers(workersRegistry *river.Workers) error {
+func RegisterWorkers(workersRegistry *river.Workers, directory string, disableCleanup bool) error {
 	river.AddWorker(workersRegistry, &SyncExtensionWorker{
-		marketplace: marketplace.NewClient(),
+		Marketplace:    marketplace.NewClient(),
+		Directory:      directory,
+		DisableCleanup: disableCleanup,
 	})
 
 	return nil
