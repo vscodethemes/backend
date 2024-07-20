@@ -1,0 +1,25 @@
+version: "3"
+
+env: 
+  DB_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+
+tasks:
+  images:
+    desc: Run the images command
+    deps:
+      - build
+    env:
+      PATH: "$PATH:"
+    cmds:
+      - npx vscodethemes images -d ../data/jobs/97/sdras.night-owl
+
+  build:
+    desc: Compile TypesScropt files
+    cmds:
+      - npm run build
+  
+  lint:
+    desc: Run ESLint
+    cmds:
+      - npm run lint
+      
