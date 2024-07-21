@@ -6,9 +6,10 @@ import stripComments from "strip-json-comments";
 import { trueCasePath } from "true-case-path";
 import { convertTheme as tmThemeToJSON } from "tmtheme-to-json";
 import * as vsctm from "vscode-textmate";
-import * as templates from "./language-templates";
 import TokenMetadata, { Style } from "./token-metadata";
-import registry, { scopeMap } from "./language-registry";
+import registry from "./language-registry";
+import languages from "./languages";
+import { unwrapError, normalizeColor, alpha } from "./utils";
 
 export interface Extension {
   displayName: string;
@@ -18,34 +19,44 @@ export interface Extension {
 
 export interface Theme {
   path: string;
-  name: string;
-  source: ThemeSource;
-  // TODO: Extract these colors from the source and validate them
-  // colors: {
-  //   activityBarBackground,
-  //   activityBarForeground,
-  //   activityBarBorder,
-  //   editorBackground,
-  //   editorForeground,
-  //   editorGroupHeaderTabsBackground,
-  //   editorGroupHeaderTabsBorder,
-  //   statusBarBackground,
-  //   statusBarForeground,
-  //   statusBarBorder,
-  //   tabActiveBackground,
-  //   tabActiveForeground,
-  //   tabActiveBorder,
-  //   tabBorder,
-  //   titleBarActiveBackground,
-  //   titleBarActiveForeground,
-  //   titleBarBorder,
-  // };
+  displayName: string;
+  type: ThemeType;
+  colors: Colors;
   languageTokens: LanguageTokens[];
+}
+
+export type ThemeType = "dark" | "light" | "hcDark" | "hcLight";
+
+export interface Colors {
+  editorBackground: string;
+  editorForeground: string;
+  activityBarBackground: string;
+  activityBarForeground: string;
+  activityBarInActiveForeground: string;
+  activityBarBorder?: string;
+  activityBarActiveBorder: string;
+  activityBarActiveBackground?: string;
+  activityBarBadgeBackground: string;
+  activityBarBadgeForeground: string;
+  tabsContainerBackground?: string;
+  tabsContainerBorder?: string;
+  statusBarBackground?: string;
+  statusBarForeground: string;
+  statusBarBorder?: string;
+  tabActiveBackground?: string;
+  tabInactiveBackground?: string;
+  tabActiveForeground: string;
+  tabBorder: string;
+  tabActiveBorder?: string;
+  tabActiveBorderTop?: string;
+  titleBarActiveBackground: string;
+  titleBarActiveForeground: string;
+  titleBarBorder?: string;
 }
 
 export interface ThemeSource {
   type: string;
-  colors: { [key: string]: any };
+  colors: { [key: string]: string };
   tokenColors: TokenColor[];
   name?: string;
   include?: string;
@@ -82,16 +93,7 @@ export interface ParseResult {
   themes: Theme[];
 }
 
-const languages = [
-  "javascript",
-  "css",
-  "html",
-  "python",
-  "go",
-  "java",
-  "cpp",
-] as const;
-
+// Parse the extension directory and return the extension and themes.
 export default async function parseExtension(
   dir: string
 ): Promise<ParseResult> {
@@ -114,19 +116,53 @@ export default async function parseExtension(
 
   const themes: Theme[] = [];
   for (const themeContribute of themeContributes) {
-    const source = await readThemeSource(dir, themeContribute);
-    const name = themeContribute.label || source.name;
-    if (!name) {
-      throw new Error(`Theme must have a 'name' defined`);
-    }
+    try {
+      const source = await readThemeSource(dir, themeContribute);
 
-    const languageTokens: LanguageTokens[] = [];
-    for (const language of languages) {
-      const tokens = await tokenizeTheme(source, language);
-      languageTokens.push({ language, tokens });
-    }
+      const displayName = themeContribute.label || source.name;
+      if (!displayName) {
+        throw new Error(`Theme must have a 'name' defined`);
+      }
 
-    themes.push({ path: themeContribute.path, name, source, languageTokens });
+      let type: ThemeType;
+      if (source.type === "dark" || themeContribute.uiTheme === "vs-dark") {
+        type = "dark";
+      } else if (source.type === "light" || themeContribute.uiTheme === "vs") {
+        type = "light";
+      } else if (
+        source.type === "hc-dark" ||
+        themeContribute.uiTheme === "hc-black"
+      ) {
+        type = "hcDark";
+      } else if (
+        source.type === "hc-light" ||
+        themeContribute.uiTheme === "hc-light"
+      ) {
+        type = "hcLight";
+      } else {
+        throw new Error(`Theme 'type' must be one of 'dark' or 'light'`);
+      }
+
+      const languageTokens: LanguageTokens[] = [];
+      for (const language of languages) {
+        const tokens = await tokenizeTheme(source, language);
+        languageTokens.push({ language: language.name, tokens });
+      }
+
+      const colors = normalizeColors(type, source.colors);
+
+      themes.push({
+        path: themeContribute.path,
+        displayName,
+        type,
+        colors,
+        languageTokens,
+      });
+    } catch (err) {
+      throw new Error(
+        `Error parsing theme '${themeContribute.path}': ${unwrapError(err)}`
+      );
+    }
   }
 
   return {
@@ -135,12 +171,338 @@ export default async function parseExtension(
   };
 }
 
-function unwrapError(error: any): string {
-  if (error instanceof Error) {
-    return error.message;
+// Extract and normalize the colors from the theme.
+function normalizeColors(
+  type: ThemeType,
+  colors: Record<string, string>
+): Colors {
+  const getColorValue = (
+    key: string,
+    defaultValue?: string | Record<ThemeType, string | undefined>,
+    backgroundColor?: string
+  ) => {
+    let value = colors[key];
+    if (!value) {
+      if (typeof defaultValue === "string") {
+        value = defaultValue;
+      } else if (defaultValue) {
+        value = defaultValue[type];
+      }
+    }
+    return normalizeColor(value, backgroundColor);
+  };
+
+  // Defaults pulled from https://github.com/Microsoft/vscode/blob/main/src/vs/workbench/common/theme.ts.
+  const foreground = getColorValue("foreground", {
+    dark: "#CCCCCC",
+    light: "#616161",
+    hcDark: "#FFFFFF",
+    hcLight: "#292929",
+  });
+  if (!foreground) {
+    throw new Error(`Missing color value for 'foreground'`);
   }
-  return String(error);
+
+  const contrastBorder = getColorValue("contrastBorder", {
+    light: undefined,
+    dark: undefined,
+    hcDark: "#6FC3DF",
+    hcLight: "#0F4A85",
+  });
+
+  const editorBackground = getColorValue("editor.background", {
+    light: "#FFFFFF",
+    dark: "#1E1E1E",
+    hcDark: "#000000",
+    hcLight: "#FFFFFF",
+  });
+  if (!editorBackground) {
+    throw new Error(`Missing color value for 'editor.background'`);
+  }
+
+  const editorForeground = getColorValue("editor.foreground", {
+    light: "#333333",
+    dark: "#BBBBBB",
+    hcDark: "#FFFFFF",
+    hcLight: foreground,
+  });
+  if (!editorForeground) {
+    throw new Error(`Missing color value for 'editor.foreground'`);
+  }
+
+  const activityBarBackground = getColorValue("activityBar.background", {
+    dark: "#333333",
+    light: "#2C2C2C",
+    hcDark: "#000000",
+    hcLight: "#FFFFFF",
+  });
+  if (!activityBarBackground) {
+    throw new Error(`Missing color value for 'activityBar.background'`);
+  }
+
+  const activityBarForeground = getColorValue("activityBar.foreground", {
+    dark: "#FFFFFF",
+    light: "#FFFFFF",
+    hcDark: "#FFFFFF",
+    hcLight: editorForeground,
+  });
+  if (!activityBarForeground) {
+    throw new Error(`Missing color value for 'activityBar.foreground'`);
+  }
+
+  const activityBarInActiveForeground = getColorValue(
+    "activityBar.inactiveForeground",
+    {
+      dark: alpha(activityBarForeground, 0.4),
+      light: alpha(activityBarForeground, 0.4),
+      hcDark: "#FFFFFF",
+      hcLight: editorForeground,
+    }
+  );
+  if (!activityBarInActiveForeground) {
+    throw new Error(`Missing color value for 'activityBar.inactiveForeground'`);
+  }
+
+  const activityBarBorder = getColorValue("activityBar.border", {
+    dark: undefined,
+    light: undefined,
+    hcDark: contrastBorder,
+    hcLight: contrastBorder,
+  });
+
+  const activityBarActiveBorder = getColorValue("activityBar.activeBorder", {
+    dark: activityBarForeground,
+    light: activityBarForeground,
+    hcDark: contrastBorder,
+    hcLight: contrastBorder,
+  });
+  if (!activityBarActiveBorder) {
+    throw new Error(`Missing color value for 'activityBar.activeBorder'`);
+  }
+
+  const activityBarActiveBackground = getColorValue(
+    "activityBar.activeBackground"
+  );
+
+  const activityBarBadgeBackground = getColorValue(
+    "activityBarBadge.background",
+    {
+      dark: "#007ACC",
+      light: "#007ACC",
+      hcDark: "#000000",
+      hcLight: "#0F4A85",
+    }
+  );
+  if (!activityBarBadgeBackground) {
+    throw new Error(`Missing color value for 'activityBarBadge.background'`);
+  }
+
+  const activityBarBadgeForeground = getColorValue(
+    "activityBarBadge.foreground",
+    "#FFFFFF"
+  );
+  if (!activityBarBadgeForeground) {
+    throw new Error(`Missing color value for 'activityBarBadge.foreground'`);
+  }
+
+  const tabsContainerBackground = getColorValue(
+    "editorGroupHeader.tabsBackground",
+    {
+      dark: "#252526",
+      light: "#F3F3F3",
+      hcDark: undefined,
+      hcLight: undefined,
+    }
+  );
+
+  const tabsContainerBorder = getColorValue("editorGroupHeader.tabsBorder");
+
+  const statusBarBackground = getColorValue("statusBar.background", {
+    dark: "#007ACC",
+    light: "#007ACC",
+    hcDark: undefined,
+    hcLight: undefined,
+  });
+
+  const statusBarForeground = getColorValue("statusBar.foreground", {
+    dark: "#FFFFFF",
+    light: "#FFFFFF",
+    hcDark: "#FFFFFF",
+    hcLight: editorForeground,
+  });
+  if (!statusBarForeground) {
+    throw new Error(`Missing color value for 'statusBar.foreground'`);
+  }
+
+  const statusBarBorder = getColorValue("statusBar.border", {
+    dark: undefined,
+    light: undefined,
+    hcDark: contrastBorder,
+    hcLight: contrastBorder,
+  });
+
+  const tabActiveBackground = getColorValue(
+    "tab.activeBackground",
+    editorBackground
+  );
+
+  const tabInactiveBackground = getColorValue("tab.inactiveBackground", {
+    dark: "#2D2D2D",
+    light: "#ECECEC",
+    hcDark: undefined,
+    hcLight: undefined,
+  });
+
+  const tabActiveForeground = getColorValue("tab.activeForeground", {
+    dark: "#FFFFFF",
+    light: "#333333",
+    hcDark: "#FFFFFF",
+    hcLight: "#292929",
+  });
+  if (!tabActiveForeground) {
+    throw new Error(`Missing color value for 'tab.activeForeground'`);
+  }
+
+  const tabBorder = getColorValue("tab.border", {
+    dark: "#252526",
+    light: "#F3F3F3",
+    hcDark: contrastBorder,
+    hcLight: contrastBorder,
+  });
+  if (!tabBorder) {
+    throw new Error(`Missing color value for 'tab.border'`);
+  }
+
+  const tabActiveBorder = getColorValue("tab.activeBorder");
+
+  const tabActiveBorderTop = getColorValue("tab.activeBorderTop", {
+    dark: undefined,
+    light: undefined,
+    hcDark: undefined,
+    hcLight: "#B5200D",
+  });
+
+  const titleBarActiveBackground = getColorValue("titleBar.activeBackground", {
+    dark: "#3C3C3C",
+    light: "#DDDDDD",
+    hcDark: "#000000",
+    hcLight: "#FFFFFF",
+  });
+  if (!titleBarActiveBackground) {
+    throw new Error(`Missing color value for 'titleBar.activeBackground'`);
+  }
+
+  const titleBarActiveForeground = getColorValue("titleBar.activeForeground", {
+    dark: "#CCCCCC",
+    light: "#333333",
+    hcDark: "#FFFFFF",
+    hcLight: "#292929",
+  });
+  if (!titleBarActiveForeground) {
+    throw new Error(`Missing color value for 'titleBar.activeForeground'`);
+  }
+
+  const titleBarBorder = getColorValue("titleBar.border", {
+    dark: undefined,
+    light: undefined,
+    hcDark: contrastBorder,
+    hcLight: contrastBorder,
+  });
+
+  return {
+    editorBackground,
+    editorForeground,
+    activityBarBackground,
+    activityBarForeground,
+    activityBarInActiveForeground,
+    activityBarBorder,
+    activityBarActiveBorder,
+    activityBarActiveBackground,
+    activityBarBadgeBackground,
+    activityBarBadgeForeground,
+    tabsContainerBackground,
+    tabsContainerBorder,
+    statusBarBackground,
+    statusBarForeground,
+    statusBarBorder,
+    tabActiveBackground,
+    tabInactiveBackground,
+    tabActiveForeground,
+    tabBorder,
+    tabActiveBorder,
+    tabActiveBorderTop,
+    titleBarActiveBackground,
+    titleBarActiveForeground,
+    titleBarBorder,
+  };
 }
+
+// Tokenize the theme for a given language.
+//
+// References:
+// https://github.com/microsoft/vscode-textmate/blob/9e3c5941668cbfcee5095eaec0e58090fda8f316/src/tests/themedTokenizer.ts
+// https://github.com/microsoft/vscode-textmate/blob/9e3c5941668cbfcee5095eaec0e58090fda8f316/src/theme.ts
+// https://github.com/microsoft/vscode-textmate/blob/9e3c5941668cbfcee5095eaec0e58090fda8f316/src/tests/themedTokenizer.ts#L13
+// https://github.com/microsoft/vscode/tree/cf0231eb6e0632a655c71ab8a55b2fa0c960c3e3/extensions/typescript-basics/syntaxes
+// https://github.com/microsoft/vscode/blob/94c9ea46838a9a619aeafb7e8afd1170c967bb55/src/vs/editor/common/modes.ts#L148
+async function tokenizeTheme(
+  theme: ThemeSource,
+  language: (typeof languages)[number]
+): Promise<Token[][]> {
+  const grammar = await registry.loadGrammar(language.scopeName);
+  if (!grammar) throw new Error("grammar file not found.");
+
+  registry.setTheme({
+    name: theme.name,
+    settings: [
+      {
+        settings: {
+          foreground: theme.colors["editor.foreground"],
+        },
+      },
+      ...theme.tokenColors,
+    ],
+  });
+
+  const colorMap = registry.getColorMap();
+  const lines = language.template.split("\n");
+
+  let lineTokens: Token[][] = [];
+  let state: vsctm.StackElement | null = null;
+
+  for (let i = 0, len = lines.length; i < len; i++) {
+    const line = lines[i];
+    if (line === undefined) continue;
+
+    const tokenizationResult = grammar.tokenizeLine2(line, state);
+    const tokens: Token[] = [];
+
+    for (
+      let j = 0, lenJ = tokenizationResult.tokens.length >>> 1;
+      j < lenJ;
+      j++
+    ) {
+      let startOffset = tokenizationResult.tokens[j << 1] ?? 0;
+      let metadata = tokenizationResult.tokens[(j << 1) + 1] ?? 0;
+      let endOffset =
+        j + 1 < lenJ ? tokenizationResult.tokens[(j + 1) << 1] : line.length;
+      let tokenText = line.substring(startOffset, endOffset);
+
+      tokens.push({
+        text: tokenText,
+        style: TokenMetadata.getStyleObject(metadata, colorMap),
+      });
+    }
+
+    lineTokens.push(tokens);
+
+    state = tokenizationResult.ruleStack;
+  }
+
+  return lineTokens;
+}
+
+// File reading functions.
 
 async function readXml(filePath: string): Promise<any> {
   const text = await fs.readFile(filePath);
@@ -243,69 +605,29 @@ async function readThemeSource(
   }
 }
 
-// References:
-// https://github.com/microsoft/vscode-textmate/blob/9e3c5941668cbfcee5095eaec0e58090fda8f316/src/tests/themedTokenizer.ts
-// https://github.com/microsoft/vscode-textmate/blob/9e3c5941668cbfcee5095eaec0e58090fda8f316/src/theme.ts
-// https://github.com/microsoft/vscode-textmate/blob/9e3c5941668cbfcee5095eaec0e58090fda8f316/src/tests/themedTokenizer.ts#L13
-// https://github.com/microsoft/vscode/tree/cf0231eb6e0632a655c71ab8a55b2fa0c960c3e3/extensions/typescript-basics/syntaxes
-// https://github.com/microsoft/vscode/blob/94c9ea46838a9a619aeafb7e8afd1170c967bb55/src/vs/editor/common/modes.ts#L148
-async function tokenizeTheme(
-  theme: ThemeSource,
-  language: keyof typeof templates
-): Promise<Token[][]> {
-  // Use the typescript grammar for javascript
-  const grammar = await registry.loadGrammar(scopeMap[language]);
-  if (!grammar) throw new Error("grammar file not found.");
-
-  registry.setTheme({
-    name: theme.name,
-    settings: [
-      {
-        settings: {
-          foreground: theme.colors["editor.foreground"],
-        },
-      },
-      ...theme.tokenColors,
-    ],
-  });
-
-  const colorMap = registry.getColorMap();
-  const lines = templates[language].split("\n");
-
-  let lineTokens: Token[][] = [];
-  let state: vsctm.StackElement | null = null;
-
-  for (let i = 0, len = lines.length; i < len; i++) {
-    const line = lines[i];
-    if (line === undefined) continue;
-
-    const tokenizationResult = grammar.tokenizeLine2(line, state);
-    const tokens: Token[] = [];
-
-    for (
-      let j = 0, lenJ = tokenizationResult.tokens.length >>> 1;
-      j < lenJ;
-      j++
-    ) {
-      let startOffset = tokenizationResult.tokens[j << 1] ?? 0;
-      let metadata = tokenizationResult.tokens[(j << 1) + 1] ?? 0;
-      let endOffset =
-        j + 1 < lenJ ? tokenizationResult.tokens[(j + 1) << 1] : line.length;
-      let tokenText = line.substring(startOffset, endOffset);
-
-      tokens.push({
-        text: tokenText,
-        style: TokenMetadata.getStyleObject(metadata, colorMap),
-      });
-    }
-
-    lineTokens.push(tokens);
-
-    state = tokenizationResult.ruleStack;
+async function readThemeJSON(filePath: string): Promise<unknown> {
+  const ext = path.extname(filePath);
+  if (ext === ".json") {
+    return readJson(filePath);
   }
+  // TODO: Support .tmTheme?
+  // } else if (ext === '.tmTheme') {
+  //   return readTMTheme(filePath);
+  // }
 
-  return lineTokens;
+  throw new Error(`Invalid theme extension at '${filePath}''`);
 }
+
+async function readTMTheme(filePath: string): Promise<unknown> {
+  try {
+    const buffer = await fs.readFile(filePath);
+    return tmThemeToJSON(buffer.toString());
+  } catch (err) {
+    throw new Error(`Invalid json at '${filePath}'': ${unwrapError(err)}`);
+  }
+}
+
+// Manifest parser functions.
 
 function parseMetadata(manifest: any): any {
   const metadata = manifest.PackageManifest.Metadata;
@@ -404,6 +726,8 @@ function parsePackageJsonPath(manifest: any): any {
   return packageJsonPath;
 }
 
+// Package JSON parser functions.
+
 function parseThemeContributes(packageJson: any) {
   const themeContributesByPath: Record<string, ThemeContribute> = {};
   if (
@@ -442,26 +766,4 @@ function isTheme(data: any): data is ThemeSource {
     "tokenColors" in data &&
     Array.isArray(data.tokenColors)
   );
-}
-
-async function readThemeJSON(filePath: string): Promise<unknown> {
-  const ext = path.extname(filePath);
-  if (ext === ".json") {
-    return readJson(filePath);
-  }
-  // TODO: Support .tmTheme?
-  // } else if (ext === '.tmTheme') {
-  //   return readTMTheme(filePath);
-  // }
-
-  throw new Error(`Invalid theme extension at '${filePath}''`);
-}
-
-async function readTMTheme(filePath: string): Promise<unknown> {
-  try {
-    const buffer = await fs.readFile(filePath);
-    return tmThemeToJSON(buffer.toString());
-  } catch (err) {
-    throw new Error(`Invalid json at '${filePath}'': ${unwrapError(err)}`);
-  }
 }

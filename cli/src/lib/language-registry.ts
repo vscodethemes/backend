@@ -2,18 +2,7 @@ import path from "path";
 import fs from "fs/promises";
 import * as oniguruma from "vscode-oniguruma";
 import * as vsctm from "vscode-textmate";
-
-// Scope names must match scopeName in {language}.tmLanguage.json
-export const scopeMap = {
-  javascript: "source.js",
-  typescript: "source.ts",
-  css: "source.css",
-  html: "text.html.basic",
-  python: "source.python",
-  go: "source.go",
-  java: "source.java",
-  cpp: "source.cpp",
-} as const;
+import languages from "./languages";
 
 const wasmPath = path.join(require.resolve("vscode-oniguruma"), "../onig.wasm");
 
@@ -34,22 +23,11 @@ export default new vsctm.Registry({
   onigLib,
   loadGrammar: async (scopeName) => {
     let fileName = "";
-    if (scopeName === "source.js") {
-      fileName = "javascript.tmLanguage.json";
-    } else if (scopeName === "source.ts") {
-      fileName = "typescript.tmLanguage.json";
-    } else if (scopeName === "source.css") {
-      fileName = "css.tmLanguage.json";
-    } else if (scopeName === "text.html.basic") {
-      fileName = "html.tmLanguage.json";
-    } else if (scopeName === "source.python") {
-      fileName = "MagicPython.tmLanguage.json";
-    } else if (scopeName === "source.go") {
-      fileName = "go.tmLanguage.json";
-    } else if (scopeName === "source.java") {
-      fileName = "java.tmLanguage.json";
-    } else if (scopeName === "source.cpp") {
-      fileName = "cpp.tmLanguage.json";
+    for (const language of languages) {
+      if (language.scopeName === scopeName) {
+        fileName = language.grammar;
+        break;
+      }
     }
 
     if (fileName) {

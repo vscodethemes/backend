@@ -60,7 +60,7 @@ class Foo(object):
         return 'bar'
 `;
 
-export const go = `struct config {
+export const go = `type config struct {
     port int
 } 
 
@@ -104,6 +104,22 @@ int main() {
   // Read file line by line.
   while(getline(myfile, line)) {
      printf("%s", line.c_str());
+  }
+}
+`;
+
+export const php = `<?php
+
+class Artist extends Model {
+  /**
+   * @var string
+   */
+  protected $table = "artists";
+
+  public function new(string $name): self {
+    return self::create([
+      "name" => $name,
+    ]);
   }
 }
 `;
