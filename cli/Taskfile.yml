@@ -11,7 +11,7 @@ tasks:
     env:
       PATH: "$PATH:"
     cmds:
-      - npx vscodethemes images -d ../data/jobs/97/sdras.night-owl
+      - npx vscodethemes images -d ../data/jobs/97/sdras.night-owl -o ../data/jobs/97/sdras.night-owl.json
 
   build:
     desc: Compile TypesScropt files
