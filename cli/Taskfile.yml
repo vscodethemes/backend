@@ -4,14 +4,23 @@ env:
   DB_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
 
 tasks:
-  images:
-    desc: Run the images command
+  info:
+    desc: Run the info command
     deps:
       - build
     env:
       PATH: "$PATH:"
     cmds:
-      - npx vscodethemes images -d ../data/jobs/100/liviuschera.noctis -o ../data/jobs/100/liviuschera.noctis/images
+      - npx vscodethemes info -d ../data/jobs/98/sdras.night-owl
+
+  images:
+    desc: Run the image command
+    deps:
+      - build
+    env:
+      PATH: "$PATH:"
+    cmds:
+      - npx vscodethemes images -d ../data/jobs/98/sdras.night-owl --path "./themes/Night Owl-color-theme.json"  --label "Night Owl" --uiTheme "vs-dark" --output ../data/jobs/98/sdras.night-owl/images
 
   build:
     desc: Compile TypesScropt files

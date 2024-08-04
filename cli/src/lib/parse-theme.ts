@@ -1,21 +1,14 @@
 import path from "path";
 import fs from "fs/promises";
-import xml2js from "xml2js";
-import stripEmoji from "emoji-strip";
 import stripComments from "strip-json-comments";
 import { trueCasePath } from "true-case-path";
 import { convertTheme as tmThemeToJSON } from "tmtheme-to-json";
 import * as vsctm from "vscode-textmate";
 import TokenMetadata, { Style } from "./token-metadata";
 import registry from "./language-registry";
-import languages from "./languages";
+import languages, { Language } from "./languages";
+import { ThemeContribute } from "./get-info";
 import { unwrapError, normalizeColor, alpha } from "./utils";
-
-export interface Extension {
-  displayName: string;
-  description: string;
-  githubLink?: string;
-}
 
 export interface Theme {
   path: string;
@@ -63,7 +56,7 @@ export interface ThemeSource {
 }
 
 export interface LanguageTokens {
-  language: string;
+  language: Language;
   tokens: Token[][];
 }
 
@@ -82,93 +75,58 @@ export interface Token {
   style: Style;
 }
 
-export interface ThemeContribute {
-  label?: string;
-  uiTheme: string;
-  path: string;
-}
+// Parse the theme and return colors and tokens for each language.
+export default async function parseTheme(
+  extensionPath: string,
+  themeContribute: ThemeContribute
+): Promise<Theme> {
+  const themePath = await trueCasePath(
+    path.resolve(extensionPath, "extension", themeContribute.path)
+  );
 
-export interface ParseResult {
-  extension: Extension;
-  themes: Theme[];
-}
+  const source = await readThemeSource(themePath);
 
-// Parse the extension directory and return the extension and themes.
-export default async function parseExtension(
-  dir: string
-): Promise<ParseResult> {
-  const manifestPath = path.resolve(dir, "./extension.vsixmanifest");
-  const manifestXml = await readXml(manifestPath);
-  const displayName = parseExtensionDisplayName(manifestXml);
-  const description = parseExtensionDescription(manifestXml);
-  const githubLink = parseGithubLink(manifestXml);
-  const relativePackageJsonPath = parsePackageJsonPath(manifestXml);
-
-  const packageJsonPath = path.resolve(dir, relativePackageJsonPath);
-  const packageJson = await readJson(packageJsonPath);
-  const themeContributes = parseThemeContributes(packageJson);
-
-  const extension: Extension = {
-    displayName,
-    description,
-    githubLink,
-  };
-
-  const themes: Theme[] = [];
-  for (const themeContribute of themeContributes) {
-    try {
-      const source = await readThemeSource(dir, themeContribute);
-
-      const displayName = themeContribute.label || source.name;
-      if (!displayName) {
-        throw new Error(`Theme must have a 'name' defined`);
-      }
-
-      let type: ThemeType;
-      if (source.type === "dark" || themeContribute.uiTheme === "vs-dark") {
-        type = "dark";
-      } else if (source.type === "light" || themeContribute.uiTheme === "vs") {
-        type = "light";
-      } else if (
-        source.type === "hc-dark" ||
-        themeContribute.uiTheme === "hc-black"
-      ) {
-        type = "hcDark";
-      } else if (
-        source.type === "hc-light" ||
-        themeContribute.uiTheme === "hc-light"
-      ) {
-        type = "hcLight";
-      } else {
-        throw new Error(`Theme 'type' must be one of 'dark' or 'light'`);
-      }
-
-      const languageTokens: LanguageTokens[] = [];
-      for (const language of languages) {
-        const tokens = await tokenizeTheme(source, language);
-        languageTokens.push({ language: language.name, tokens });
-      }
-
-      const colors = normalizeColors(type, source.colors);
-
-      themes.push({
-        path: themeContribute.path,
-        displayName,
-        type,
-        colors,
-        languageTokens,
-      });
-    } catch (err) {
-      throw new Error(
-        `Error parsing theme '${themeContribute.path}': ${unwrapError(err)}`
-      );
-    }
+  const displayName = themeContribute.label || source.name;
+  if (!displayName) {
+    throw new Error(`Theme must have a 'name' defined`);
   }
 
-  return {
-    extension,
-    themes,
+  let type: ThemeType;
+  if (source.type === "dark" || themeContribute.uiTheme === "vs-dark") {
+    type = "dark";
+  } else if (source.type === "light" || themeContribute.uiTheme === "vs") {
+    type = "light";
+  } else if (
+    source.type === "hc-dark" ||
+    themeContribute.uiTheme === "hc-black"
+  ) {
+    type = "hcDark";
+  } else if (
+    source.type === "hc-light" ||
+    themeContribute.uiTheme === "hc-light"
+  ) {
+    type = "hcLight";
+  } else {
+    throw new Error(`Theme 'type' must be one of 'dark' or 'light'`);
+  }
+
+  const languageTokens: LanguageTokens[] = [];
+  for (const language of languages) {
+    const tokens = await tokenizeTheme(source, language);
+    languageTokens.push({ language: language, tokens });
+  }
+
+  const colors = normalizeColors(type, source.colors);
+
+  const theme: Theme = {
+    path: themePath,
+    displayName,
+    type,
+    colors,
+    languageTokens,
   };
+
+  return theme;
 }
 
 // Extract and normalize the colors from the theme.
@@ -504,23 +462,6 @@ async function tokenizeTheme(
 
 // File reading functions.
 
-async function readXml(filePath: string): Promise<any> {
-  const text = await fs.readFile(filePath);
-
-  const xml = await new Promise((resolve, reject) => {
-    xml2js.parseString(text, { trim: true, normalize: true }, (err, result) => {
-      if (err) {
-        return reject(
-          new Error(`Invalid xml at '${filePath}': ${unwrapError(err)}`)
-        );
-      }
-      resolve(result);
-    });
-  });
-
-  return xml;
-}
-
 async function readJson(filePath: string): Promise<unknown> {
   try {
     const buffer = await fs.readFile(filePath);
@@ -535,14 +476,7 @@ async function readJson(filePath: string): Promise<unknown> {
   }
 }
 
-async function readThemeSource(
-  extensionPath: string,
-  themeContribute: ThemeContribute
-): Promise<ThemeSource> {
-  const themePath = await trueCasePath(
-    path.resolve(extensionPath, "extension", themeContribute.path)
-  );
-
+async function readThemeSource(themePath: string): Promise<ThemeSource> {
   try {
     const themeSource = await readThemeJSON(themePath);
 
@@ -625,131 +559,6 @@ async function readTMTheme(filePath: string): Promise<unknown> {
   } catch (err) {
     throw new Error(`Invalid json at '${filePath}'': ${unwrapError(err)}`);
   }
-}
-
-// Manifest parser functions.
-
-function parseMetadata(manifest: any): any {
-  const metadata = manifest.PackageManifest.Metadata;
-  if (!Array.isArray(metadata) || !metadata[0]) {
-    throw new Error("Could not parse metadata from extension manifest");
-  }
-
-  return metadata[0];
-}
-
-function parseTextContent(node: any): string {
-  if (typeof node === "string") return node;
-  if (node && typeof node === "object" && "_" in node) return String(node["_"]);
-  return "";
-}
-
-function parseExtensionDisplayName(manifest: any): string {
-  const metadata = parseMetadata(manifest);
-  const textContent = parseTextContent(metadata.DisplayName[0]);
-  const extensionName = stripEmoji(textContent).trim();
-  if (!extensionName) {
-    throw new Error("Missing extension name in manifest");
-  }
-
-  return extensionName;
-}
-
-function parseExtensionDescription(manifest: any): string {
-  const metadata = parseMetadata(manifest);
-  const textContent = parseTextContent(metadata.Description[0]);
-  const extensionDescription = stripEmoji(textContent).trim();
-  if (!extensionDescription) {
-    throw new Error("Missing extension description in manifest");
-  }
-
-  return extensionDescription;
-}
-
-function parseProperties(manifest: any): any[] {
-  const metadata = parseMetadata(manifest);
-  const properties = metadata.Properties;
-  if (
-    !Array.isArray(properties) ||
-    !properties[0] ||
-    !Array.isArray(properties[0].Property)
-  ) {
-    throw new Error("Could not parse properties from extension manifest");
-  }
-
-  return properties[0].Property;
-}
-
-function parseAttributes(node: any): { [key: string]: string } {
-  if (node && typeof node === "object" && "$" in node) return node["$"];
-  return {};
-}
-
-function parseGithubLink(manifest: any): string | undefined {
-  const properties = parseProperties(manifest);
-
-  let githubLink: string | undefined;
-  for (const property of properties) {
-    const attrs = parseAttributes(property);
-    if (attrs.Id === "Microsoft.VisualStudio.Services.Links.GitHub") {
-      githubLink = attrs.Value;
-    }
-  }
-
-  return githubLink;
-}
-
-function parseAssets(manifest: any): any[] {
-  const assets = manifest.PackageManifest.Assets;
-  if (!Array.isArray(assets) || !assets[0] || !Array.isArray(assets[0].Asset)) {
-    throw new Error("Could not parse assets from extension manifest");
-  }
-
-  return assets[0].Asset;
-}
-
-function parsePackageJsonPath(manifest: any): any {
-  const assets = parseAssets(manifest);
-  let packageJsonPath;
-
-  for (const asset of assets) {
-    const attrs = parseAttributes(asset);
-    if (attrs.Type === "Microsoft.VisualStudio.Code.Manifest") {
-      packageJsonPath = attrs.Path;
-    }
-  }
-
-  if (!packageJsonPath) {
-    throw new Error("Could not find package.json path in extension manifest");
-  }
-
-  return packageJsonPath;
-}
-
-// Package JSON parser functions.
-
-function parseThemeContributes(packageJson: any) {
-  const themeContributesByPath: Record<string, ThemeContribute> = {};
-  if (
-    packageJson &&
-    typeof packageJson === "object" &&
-    packageJson.contributes &&
-    Array.isArray(packageJson.contributes.themes)
-  ) {
-    for (const contribute of packageJson.contributes.themes) {
-      if (
-        contribute &&
-        typeof contribute === "object" &&
-        contribute.label &&
-        contribute.uiTheme &&
-        contribute.path
-      ) {
-        themeContributesByPath[contribute.path] = contribute;
-      }
-    }
-  }
-
-  return Object.values(themeContributesByPath);
 }
 
 function isPartialTheme(data: any): data is Partial<ThemeSource> {

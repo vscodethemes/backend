@@ -1,6 +1,6 @@
 import * as templates from "./language-templates";
 
-export default [
+const defaultLanguages = [
   {
     name: "JavaScript",
     extName: "js",
@@ -73,3 +73,6 @@ export default [
     tabName: "main.php",
   },
 ] as const;
+
+export default defaultLanguages;
+export type Language = (typeof defaultLanguages)[number];

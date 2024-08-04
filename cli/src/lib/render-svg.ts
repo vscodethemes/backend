@@ -1,7 +1,7 @@
 import { encode } from "html-entities";
 import escapeHtml from "escape-html";
-import { Theme } from "./parse-extension";
-import languages from "./languages";
+import { Colors, Token } from "./parse-theme";
+import { Language } from "./languages";
 
 export interface SvgOptions {
   rounded?: boolean;
@@ -27,8 +27,10 @@ export const defaultOptions = {
 };
 
 export default function renderSvg(
-  { displayName, colors, languageTokens }: Theme,
-  language: (typeof languages)[number],
+  displayName: string,
+  colors: Colors,
+  language: Language,
+  tokens: Token[][],
   opts = defaultOptions
 ) {
   let svg = `<svg viewBox="0 0 460 331" xmlns="http://www.w3.org/2000/svg" font-family="${opts.sansSerifFontFamily}"  letter-spacing="${titleLetterSpacing}">`;
@@ -122,9 +124,6 @@ export default function renderSvg(
   }" font-size="${titleFontSize}">${escapeHtml(displayName)}</text>`;
 
   svg += `<text font-family="${opts.monoFontFamily}" fill="${colors.editorForeground}" font-size="${tokenFontSize}" letter-spacing="${editorLetterSpacing}">`;
-
-  const tokens =
-    languageTokens.find((t) => t.language === language.name)?.tokens ?? [];
 
   for (let i = 0; i < tokens.length; i++) {
     const lineTokens = tokens[i];
