@@ -20,3 +20,16 @@ services:
       - db
     environment:
       - DATABASE_URL=postgres://postgres:postgres@db:5432/postgres?sslmode=disable&application_name=riverui
+
+  objectstore:
+    image: localstack/localstack:3.6.0
+    container_name: objectstore
+    ports:
+      - "4566:4566" # LocalStack Gateway
+      - "4510-4559:4510-4559" # external services port range
+    environment:
+      - SERVICES=s3
+      - DEBUG=1
+    volumes:
+      - ./data/localstack:/var/lib/localstack
+      - ./localstack/init/ready.d:/etc/localstack/init/ready.d

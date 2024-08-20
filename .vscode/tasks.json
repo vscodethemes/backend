@@ -13,7 +13,8 @@
       "dependsOn": [
         "Database",
         "API",
-        "Workers"
+        "Workers",
+        "ObjectStore",
       ],
       "runOptions": {
         "runOn": "folderOpen"
@@ -56,6 +57,16 @@
       "command": "task",
       "args": [
         "workers"
+      ],
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "ObjectStore",
+      "type": "shell",
+      "command": "task",
+      "args": [
+        "objectstore"
       ],
       "isBackground": true,
       "problemMatcher": []

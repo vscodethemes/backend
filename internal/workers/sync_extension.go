@@ -7,7 +7,10 @@ import (
 	"path"
 	"path/filepath"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/labstack/gommon/log"
+	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/riverqueue/river"
 	"github.com/vscodethemes/backend/internal/cli"
 	"github.com/vscodethemes/backend/internal/downloader"
@@ -24,9 +27,12 @@ func (SyncExtensionArgs) Kind() string { return "syncExtension" }
 
 type SyncExtensionWorker struct {
 	river.WorkerDefaults[SyncExtensionArgs]
-	Marketplace    *marketplace.Client
-	Directory      string
-	DisableCleanup bool
+	Marketplace       *marketplace.Client
+	Directory         string
+	DisableCleanup    bool
+	ObjectStoreClient *s3.Client
+	ObjectStoreBucket string
+	CDNBaseUrl        string
 }
 
 func (w *SyncExtensionWorker) Work(ctx context.Context, job *river.Job[SyncExtensionArgs]) error {
@@ -96,14 +102,14 @@ func (w *SyncExtensionWorker) Work(ctx context.Context, job *river.Job[SyncExten
 	}
 
 	// Generate images for each theme concurrency, up to a max of 10 subroutines.
-	group, ctx := errgroup.WithContext(ctx)
+	group, imagesCtx := errgroup.WithContext(ctx)
 	group.SetLimit(10)
 
 	imagesResults := make([]*cli.GenerateImagesResult, len(info.ThemeContributes))
 	for i, theme := range info.ThemeContributes {
 		group.Go(func() error {
 			log.Infof("Generating images for theme: %s", theme.Path)
-			result, err := cli.GenerateImages(ctx, extensionPath, theme, imagesPath)
+			result, err := cli.GenerateImages(imagesCtx, extensionPath, theme, imagesPath)
 			if err != nil {
 				return fmt.Errorf("failed to generate images for %s: %w", theme.Path, err)
 			}
@@ -117,15 +123,77 @@ func (w *SyncExtensionWorker) Work(ctx context.Context, job *river.Job[SyncExten
 		return err
 	}
 
-	// TODO: Upload images. Run concurrency up to a max of 10 subroutines.
-	// _, err := s3.PutObject(image.SVGPath)
-	// _, err := s3.PutObject(image.PNGPath)
+	// Upload images for each theme concurrency, up to a max of 10 subroutines.
+	group, uploadCtx := errgroup.WithContext(ctx)
+	group.SetLimit(10)
+
 	for _, result := range imagesResults {
-		for _, language := range result.Languages {
-			fmt.Println("SvgPath: ", language.SvgPath)
-			fmt.Println("PngPath: ", language.PngPath)
-		}
+		group.Go(func() error {
+			for _, language := range result.Languages {
+				file, err := os.Open(language.SvgPath)
+				if err != nil {
+					return fmt.Errorf("failed to open file: %w", err)
+				}
+				defer file.Close()
+
+				id, err := gonanoid.New()
+				if err != nil {
+					return fmt.Errorf("failed to generate nanoid: %w", err)
+				}
+
+				svgFileName := fmt.Sprintf("%s.svg", id)
+				svgObjectKey := fmt.Sprintf("%s/%s", extensionSlug, svgFileName)
+
+				log.Debugf("Uploading SVG image at %s to %s", language.SvgPath, svgObjectKey)
+
+				_, err = w.ObjectStoreClient.PutObject(uploadCtx, &s3.PutObjectInput{
+					Bucket:       aws.String(w.ObjectStoreBucket),
+					Key:          aws.String(svgObjectKey),
+					Body:         file,
+					ContentType:  aws.String("image/svg+xml"),
+					CacheControl: aws.String("public, max-age=31536000"),
+				})
+				if err != nil {
+					return fmt.Errorf("failed to upload svg file to %s: %w", svgObjectKey, err)
+				}
+
+				svgImageUrl := fmt.Sprintf("%s/%s", w.CDNBaseUrl, svgObjectKey)
+				log.Infof("SVG image uploaded: %s", svgImageUrl)
+
+				file, err = os.Open(language.PngPath)
+				if err != nil {
+					return fmt.Errorf("failed to open file: %w", err)
+				}
+
+				pngFileName := fmt.Sprintf("%s.png", id)
+				pngObjectKey := fmt.Sprintf("%s/%s", extensionSlug, pngFileName)
+
+				log.Debugf("Uploading PNG image at %s to %s", language.PngPath, pngObjectKey)
+
+				_, err = w.ObjectStoreClient.PutObject(uploadCtx, &s3.PutObjectInput{
+					Bucket:       aws.String(w.ObjectStoreBucket),
+					Key:          aws.String(pngObjectKey),
+					Body:         file,
+					ContentType:  aws.String("image/png"),
+					CacheControl: aws.String("public, max-age=31536000"),
+				})
+				if err != nil {
+					return fmt.Errorf("failed to upload png file to %s: %w", pngObjectKey, err)
+				}
+
+				pngImageUrl := fmt.Sprintf("%s/%s", w.CDNBaseUrl, pngObjectKey)
+				log.Infof("PNG image uploaded: %s", pngImageUrl)
+			}
+
+			return nil
+		})
 	}
+
+	if err := group.Wait(); err != nil {
+		return err
+	}
+
+	// TODO: Map the full image urls to each langauge.
 
 	// TODO: Save the extension to the database.
 

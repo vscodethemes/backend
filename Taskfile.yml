@@ -64,4 +64,9 @@ tasks:
     desc: Run linters
     cmds:
       - go run github.com/golangci/golangci-lint/cmd/golangci-lint run
+
+  objectstore:
+    desc: Start objectstore
+    cmds:
+      - docker-compose up objectstore
       
