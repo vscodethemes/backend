@@ -63,7 +63,7 @@ type ExtensionResult struct {
 	LastUpdated         string                              `json:"lastUpdated"`
 	PublishedDate       string                              `json:"publishedDate"`
 	ReleaseDate         string                              `json:"releaseDate"`
-	ShortDescription    string                              `json:"shortDescription"`
+	ShortDescription    *string                             `json:"shortDescription"`
 	Versions            []ExtensionVersionResult            `json:"versions"`
 	Categories          []string                            `json:"categories"`
 	Tags                []string                            `json:"tags"`

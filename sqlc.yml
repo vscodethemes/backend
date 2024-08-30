@@ -1,0 +1,19 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    queries: "internal/db/queries"
+    schema: "internal/db/schema.sql"
+    gen:
+      go:
+        package: "db"
+        out: "internal/db"
+        sql_package: "pgx/v5"
+        overrides:
+          - db_type: "public.cube"
+            go_type:
+              type: "string"
+          - db_type: "public.cube"
+            nullable: true
+            go_type:
+              type: "string"
+              pointer: true

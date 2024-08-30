@@ -2,6 +2,8 @@ version: "3"
 
 env: 
   DB_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+  DBMATE_MIGRATIONS_DIR: ./internal/db/migrations
+  DBMATE_SCHEMA_FILE: ./internal/db/schema.sql
 
 tasks:
   api:
@@ -10,7 +12,7 @@ tasks:
     # sources:
     #   - '**/*.go'
     deps:
-      - generate
+      - generate-openapi
       - db-wait
     cmds:
       - go run cmd/api/main.go --database-url "$DB_URL&application_name=api" --port $PORT 
@@ -20,15 +22,20 @@ tasks:
   workers:
     desc: Start the workers server.
     deps:
-      - generate
       - db-wait
     cmds:
       - go run cmd/workers/main.go --database-url "$DB_URL&application_name=workers" --dir ./data --disable-cleanup
 
-  generate:
-    desc: Generate OpenAPI server.
+  generate-openapi:
+    desc: Generate OpenAPI.
     cmds:
       - go generate ./...
+      - go run github.com/sqlc-dev/sqlc/cmd/sqlc generate
+
+  generate-sqlc:
+    desc: Generate SQLC.
+    cmds:
+      - go run github.com/sqlc-dev/sqlc/cmd/sqlc generate
   
   db:
     desc: Start the database
@@ -40,15 +47,25 @@ tasks:
     cmds:
       - go run github.com/amacneil/dbmate -u $DB_URL wait 
   
-  migrate: 
+  migrate-up: 
     desc: Run migrations
     cmds:
-      - go run github.com/amacneil/dbmate -u $DB_URL -d "./db/migrations" up
+      - go run github.com/amacneil/dbmate -u $DB_URL up 
+  
+  migrate-down: 
+    desc: Rollback migrations
+    cmds:
+      - go run github.com/amacneil/dbmate -u $DB_URL down
+ 
+  schema-dump: 
+    desc: Dump the database schema
+    cmds:
+      - go run github.com/amacneil/dbmate -u $DB_URL dump
 
   create-migration: 
     desc: Create a new migration file
     cmds:
-      - go run github.com/amacneil/dbmate -d "./db/migrations" new {{.CLI_ARGS}}
+      - go run github.com/amacneil/dbmate new {{.CLI_ARGS}}
 
   river:
     desc: Run the river command

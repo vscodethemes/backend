@@ -10,7 +10,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
-	"github.com/vscodethemes/backend/internal/db"
 	"github.com/vscodethemes/backend/internal/workers"
 )
 
@@ -44,7 +43,7 @@ func (h Handler) SyncExtensionBySlug(ctx context.Context, input *SyncExtensionIn
 	}
 
 	var job *rivertype.JobRow
-	err := db.Tx(ctx, h.DBPool, func(tx pgx.Tx) error {
+	err := pgx.BeginFunc(ctx, h.DBPool, func(tx pgx.Tx) error {
 		result, err := h.RiverClient.InsertTx(ctx, tx, workers.SyncExtensionArgs{
 			Slug: input.Slug,
 		}, &river.InsertOpts{

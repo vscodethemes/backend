@@ -67,6 +67,7 @@ func main() {
 		ObjectStoreClient: objectStoreClient,
 		ObjectStoreBucket: *objectStoreBucket,
 		CDNBaseUrl:        *cdnBaseUrl,
+		DBPool:            dbPool,
 	})
 	if err != nil {
 		log.Fatal(fmt.Errorf("failed to register workers: %w", err))
