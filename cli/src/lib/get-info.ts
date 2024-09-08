@@ -25,6 +25,13 @@ export interface InfoResult {
 // Parse the extension directory and return the extension and themes.
 export default async function getInfo(dir: string): Promise<InfoResult> {
   const manifestPath = path.resolve(dir, "./extension.vsixmanifest");
+  // Check if the manifest file exists.
+  try {
+    await fs.access(manifestPath);
+  } catch (err) {
+    throw new Error(`Could not find extension manifest at '${manifestPath}'`);
+  }
+
   const manifestXml = await readXml(manifestPath);
   const displayName = parseExtensionDisplayName(manifestXml);
   const description = parseExtensionDescription(manifestXml);

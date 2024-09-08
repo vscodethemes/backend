@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 )
 
@@ -75,6 +76,11 @@ type Style struct {
 }
 
 func GenerateImages(ctx context.Context, extensionPath string, theme ThemeContribute, outputDir string) (*GenerateImagesResult, error) {
+	// Ensure the extension directory exists.
+	if _, err := os.Stat(extensionPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("extension directory does not exist: %w", err)
+	}
+
 	args := []string{"vscodethemes", "images"}
 	args = append(args, "--dir", extensionPath)
 	args = append(args, "--uiTheme", theme.UITheme)

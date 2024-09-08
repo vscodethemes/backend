@@ -45,8 +45,6 @@ func main() {
 	objectStoreCfg, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithCredentialsProvider(objectStoreCreds),
 		config.WithRegion(*objectStoreRegion),
-		// For R2
-		// config.WithRegion("auto"),
 	)
 	if err != nil {
 		log.Fatal(fmt.Errorf("failed to load object store config: %w", err))
@@ -54,8 +52,6 @@ func main() {
 
 	objectStoreClient := s3.NewFromConfig(objectStoreCfg, func(o *s3.Options) {
 		o.BaseEndpoint = aws.String(*objectStoreEndpoint)
-		// For R2
-		// o.BaseEndpoint = aws.String(fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountId))
 	})
 
 	// Register Workers.

@@ -12,7 +12,7 @@ import (
 )
 
 var GetJobOperation = huma.Operation{
-	OperationID: "get-job-by-id",
+	OperationID: "get-job",
 	Method:      http.MethodGet,
 	Path:        "/jobs/{id}",
 	Summary:     "Get Job",

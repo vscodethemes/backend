@@ -5,6 +5,7 @@
   "main": "build/index.js",
   "bin": {
     "vscodethemes": "build/cli.js",
+    "vscodethemes-info": "build/cli-info.js",
     "vscodethemes-images": "build/cli-images.js"
   },
   "scripts": {

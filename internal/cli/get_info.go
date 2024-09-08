@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 )
 
@@ -25,13 +26,22 @@ type ThemeContribute struct {
 }
 
 func GetInfo(ctx context.Context, extensionPath string) (*GetInfoResult, error) {
+	// Ensure the extension directory exists.
+	if _, err := os.Stat(extensionPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("extension directory does not exist: %w", err)
+	}
+
 	cmd := exec.CommandContext(ctx, "npx", "vscodethemes", "info", "-d", extensionPath)
+	// cmd := exec.CommandContext(ctx, "npx", "vscodethemes", "help")
+	// TODO: Make cli path configurable?
+	// cmd.Dir = "/cli"
 	cmd.Dir = "cli"
 
 	output, err := cmd.Output()
 	if err != nil {
 		// Read stderr to get the error message.
 		fmt.Println("stderr: ", string(err.(*exec.ExitError).Stderr))
+
 		return nil, fmt.Errorf("failed to get info: %w", err)
 	}
 

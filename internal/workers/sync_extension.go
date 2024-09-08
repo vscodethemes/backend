@@ -144,11 +144,14 @@ func (w *SyncExtensionWorker) Work(ctx context.Context, job *river.Job[SyncExten
 	}
 
 	// Upload images for each theme concurrency, up to a max of 10 subroutines.
-	slugGenerator := makeThemeSlugGenerator()
 	group, uploadCtx := errgroup.WithContext(ctx)
 	group.SetLimit(10)
-	upsertThemeWithImagesParams := make([]UpsertThemeWithImagesParams, len(imagesResults))
+
+	// Generate a cache bust ID based on the job ID.
 	cacheBustId := base64.RawURLEncoding.EncodeToString(big.NewInt(int64(job.ID)).Bytes())
+
+	slugGenerator := makeThemeSlugGenerator()
+	upsertThemeWithImagesParams := make([]UpsertThemeWithImagesParams, len(imagesResults))
 	for themeIndex, result := range imagesResults {
 		themeSlug := slugGenerator(result.Theme.DisplayName)
 

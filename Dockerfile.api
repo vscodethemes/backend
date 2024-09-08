@@ -1,0 +1,21 @@
+# Build stage
+
+FROM golang:1.22.5-alpine3.20 AS builder
+
+WORKDIR /app
+
+COPY . .
+
+RUN go mod download
+
+RUN go build -o /api cmd/api/main.go
+
+# Run stage
+
+FROM alpine:3.20 AS run
+
+COPY --from=builder /api /
+
+COPY ./entrypoint-api.sh /
+
+ENTRYPOINT [ "/entrypoint-api.sh" ]

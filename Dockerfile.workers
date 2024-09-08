@@ -1,0 +1,25 @@
+# Build stage
+
+FROM golang:1.22.5-alpine3.20 AS builder
+
+WORKDIR /app
+
+COPY . .
+
+RUN go mod download
+
+RUN go build -o /workers cmd/workers/main.go
+
+# Run stage
+
+FROM node:18.20.4-alpine3.20 as run
+
+COPY --from=builder /workers /
+
+COPY ./entrypoint-workers.sh /
+COPY ./cli /cli
+
+RUN cd /cli && npm install && npm run build
+
+ENTRYPOINT [ "/entrypoint-workers.sh" ]
+

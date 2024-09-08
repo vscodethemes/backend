@@ -1,0 +1,9 @@
+[build]
+dockerfilePath = "Dockerfile.api"
+
+[deploy]
+numReplicas = 1
+restartPolicyType = "ALWAYS"
+restartPolicyMaxRetries = 10
+# healthcheckPath = "/health"
+# healthcheckTimeout = 300
