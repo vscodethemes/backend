@@ -11,7 +11,7 @@ import (
 	"github.com/riverqueue/river/rivertype"
 )
 
-var GetJobByIDOperation = huma.Operation{
+var GetJobOperation = huma.Operation{
 	OperationID: "get-job-by-id",
 	Method:      http.MethodGet,
 	Path:        "/jobs/{id}",
@@ -48,7 +48,7 @@ type JobAttemptError struct {
 	Error   string    `json:"error"`
 }
 
-func (h Handler) GetJobByID(ctx context.Context, input *GetJobInput) (*GetJobOutput, error) {
+func (h Handler) GetJob(ctx context.Context, input *GetJobInput) (*GetJobOutput, error) {
 	job, err := h.RiverClient.JobGet(ctx, input.ID)
 	if err != nil {
 		if errors.Is(err, rivertype.ErrNotFound) {

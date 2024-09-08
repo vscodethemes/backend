@@ -7,46 +7,57 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const listExtensions = `-- name: ListExtensions :many
-SELECT id, vsc_extension_id, name, display_name, short_description, publisher_id, publisher_name, publisher_display_name, installs, trending_daily, trending_weekly, trending_monthly, weighted_rating, published_at, released_at, created_at, updated_at FROM extensions
+const getExtension = `-- name: GetExtension :one
+SELECT 
+	e.name,
+	e.display_name,
+	e.publisher_name,
+	e.publisher_display_name,
+	e.short_description,
+	jsonb_agg(json_build_object(
+		'name', t.name,
+		'display_name', t.display_name,
+		'url', i.url
+	)) AS themes
+FROM extensions e
+LEFT JOIN themes t ON t.extension_id = e.id
+LEFT JOIN images i ON i.theme_id = t.id
+WHERE 
+	e.name = $1
+	AND e.publisher_name = $2
+	AND i.language = $3
+GROUP BY e.id
 `
 
-func (q *Queries) ListExtensions(ctx context.Context) ([]Extension, error) {
-	rows, err := q.db.Query(ctx, listExtensions)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Extension
-	for rows.Next() {
-		var i Extension
-		if err := rows.Scan(
-			&i.ID,
-			&i.VscExtensionID,
-			&i.Name,
-			&i.DisplayName,
-			&i.ShortDescription,
-			&i.PublisherID,
-			&i.PublisherName,
-			&i.PublisherDisplayName,
-			&i.Installs,
-			&i.TrendingDaily,
-			&i.TrendingWeekly,
-			&i.TrendingMonthly,
-			&i.WeightedRating,
-			&i.PublishedAt,
-			&i.ReleasedAt,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+type GetExtensionParams struct {
+	ExtensionName string
+	PublisherName string
+	Language      string
+}
+
+type GetExtensionRow struct {
+	Name                 string
+	DisplayName          string
+	PublisherName        string
+	PublisherDisplayName string
+	ShortDescription     pgtype.Text
+	Themes               []byte
+}
+
+func (q *Queries) GetExtension(ctx context.Context, arg GetExtensionParams) (GetExtensionRow, error) {
+	row := q.db.QueryRow(ctx, getExtension, arg.ExtensionName, arg.PublisherName, arg.Language)
+	var i GetExtensionRow
+	err := row.Scan(
+		&i.Name,
+		&i.DisplayName,
+		&i.PublisherName,
+		&i.PublisherDisplayName,
+		&i.ShortDescription,
+		&i.Themes,
+	)
+	return i, err
 }

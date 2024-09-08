@@ -8,11 +8,7 @@ env:
 tasks:
   api:
     desc: Start the api server.
-    # watch: true
-    # sources:
-    #   - '**/*.go'
     deps:
-      - generate-openapi
       - db-wait
     cmds:
       - go run cmd/api/main.go --database-url "$DB_URL&application_name=api" --port $PORT 
@@ -25,12 +21,6 @@ tasks:
       - db-wait
     cmds:
       - go run cmd/workers/main.go --database-url "$DB_URL&application_name=workers" --dir ./data --disable-cleanup
-
-  generate-openapi:
-    desc: Generate OpenAPI.
-    cmds:
-      - go generate ./...
-      - go run github.com/sqlc-dev/sqlc/cmd/sqlc generate
 
   generate-sqlc:
     desc: Generate SQLC.

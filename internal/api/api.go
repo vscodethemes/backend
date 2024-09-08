@@ -6,6 +6,7 @@ import (
 )
 
 func RegisterRoutes(api huma.API, h handlers.Handler) {
-	huma.Register(api, handlers.SyncExtensionBySlugOperation, h.SyncExtensionBySlug)
-	huma.Register(api, handlers.GetJobByIDOperation, h.GetJobByID)
+	huma.Register(api, handlers.GetExtensionOperation, h.GetExtension)
+	huma.Register(api, handlers.SyncExtensionOperation, h.SyncExtension)
+	huma.Register(api, handlers.GetJobOperation, h.GetJob)
 }

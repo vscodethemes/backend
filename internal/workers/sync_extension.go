@@ -27,7 +27,8 @@ import (
 )
 
 type SyncExtensionArgs struct {
-	Slug string `json:"slug"`
+	ExtensionName string
+	PublisherName string
 }
 
 func (SyncExtensionArgs) Kind() string { return "syncExtension" }
@@ -44,7 +45,7 @@ type SyncExtensionWorker struct {
 }
 
 func (w *SyncExtensionWorker) Work(ctx context.Context, job *river.Job[SyncExtensionArgs]) error {
-	extensionSlug := job.Args.Slug
+	extensionSlug := fmt.Sprintf("%s.%s", job.Args.PublisherName, job.Args.ExtensionName)
 	log.Infof("Syncing extension package: %s", extensionSlug)
 
 	// Fetch extension from the marketplace API.

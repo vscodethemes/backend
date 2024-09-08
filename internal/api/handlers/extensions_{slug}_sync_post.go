@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/jackc/pgx/v5"
@@ -13,18 +12,19 @@ import (
 	"github.com/vscodethemes/backend/internal/workers"
 )
 
-var SyncExtensionBySlugOperation = huma.Operation{
-	OperationID: "post-extensions-sync-by-slug",
+var SyncExtensionOperation = huma.Operation{
+	OperationID: "post-extensions-sync",
 	Method:      http.MethodPost,
-	Path:        "/extensions/{slug}/sync",
+	Path:        "/extensions/{publisher}/{name}/sync",
 	Summary:     "Sync Extension",
-	Description: "Sync an extension by it's slug (ie. sdras.night-owl). Returns the sync job.",
+	Description: "Sync an extension by it's slug. Returns the sync job.",
 	Tags:        []string{"Extensions"},
 	Errors:      []int{http.StatusBadRequest},
 }
 
 type SyncExtensionInput struct {
-	Slug string `path:"slug" example:"sdras.night-owl" doc:"Slug of the extension to sync"`
+	PublisherName string `path:"publisher" example:"sdras" doc:"The publisher name"`
+	ExtensionName string `path:"name" example:"night-owl" doc:"The extension name"`
 }
 
 type SyncExtensionOutput struct {
@@ -33,19 +33,12 @@ type SyncExtensionOutput struct {
 	}
 }
 
-func (h Handler) SyncExtensionBySlug(ctx context.Context, input *SyncExtensionInput) (*SyncExtensionOutput, error) {
-	fmt.Println("SyncExtensionBySlug", input.Slug)
-
-	// Validate slug format.
-	slugParts := strings.Split(input.Slug, ".")
-	if len(slugParts) != 2 {
-		return nil, huma.NewError(http.StatusBadRequest, "Invalid slug format")
-	}
-
+func (h Handler) SyncExtension(ctx context.Context, input *SyncExtensionInput) (*SyncExtensionOutput, error) {
 	var job *rivertype.JobRow
 	err := pgx.BeginFunc(ctx, h.DBPool, func(tx pgx.Tx) error {
 		result, err := h.RiverClient.InsertTx(ctx, tx, workers.SyncExtensionArgs{
-			Slug: input.Slug,
+			PublisherName: input.PublisherName,
+			ExtensionName: input.ExtensionName,
 		}, &river.InsertOpts{
 			MaxAttempts: 10,
 		})
