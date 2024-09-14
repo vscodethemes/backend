@@ -98,7 +98,7 @@ on conflict("extension_id", "path") do update set
   "title_bar_active_foreground" = excluded."title_bar_active_foreground",
   "title_bar_border" = excluded."title_bar_border",
   "updated_at" = now()
-returning id, extension_id, path, name, display_name, editor_background, editor_foreground, activity_bar_background, activity_bar_foreground, activity_bar_in_active_foreground, activity_bar_border, activity_bar_active_border, activity_bar_active_background, activity_bar_badge_background, activity_bar_badge_foreground, tabs_container_background, tabs_container_border, status_bar_background, status_bar_foreground, status_bar_border, tab_active_background, tab_inactive_background, tab_active_foreground, tab_border, tab_active_border, tab_active_border_top, title_bar_active_background, title_bar_active_foreground, title_bar_border, created_at, updated_at
+returning id, extension_id, path, name, display_name, editor_background, editor_foreground, activity_bar_background, activity_bar_foreground, activity_bar_in_active_foreground, activity_bar_border, activity_bar_active_border, activity_bar_active_background, activity_bar_badge_background, activity_bar_badge_foreground, tabs_container_background, tabs_container_border, status_bar_background, status_bar_foreground, status_bar_border, tab_active_background, tab_inactive_background, tab_active_foreground, tab_border, tab_active_border, tab_active_border_top, title_bar_active_background, title_bar_active_foreground, title_bar_border, created_at, updated_at, tsv
 `
 
 type UpsertThemeParams struct {
@@ -196,6 +196,7 @@ func (q *Queries) UpsertTheme(ctx context.Context, arg UpsertThemeParams) (Theme
 		&i.TitleBarBorder,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Tsv,
 	)
 	return i, err
 }

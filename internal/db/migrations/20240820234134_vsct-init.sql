@@ -56,8 +56,30 @@ CREATE TABLE themes (
   "title_bar_border" cube,
   "created_at" timestamp NOT NULL DEFAULT NOW(),
   "updated_at" timestamp NOT NULL DEFAULT NOW(),
+  "tsv" tsvector NOT NULL,
    UNIQUE ("extension_id", "path")
 );
+
+CREATE FUNCTION tsv_trigger() RETURNS trigger AS $$
+BEGIN
+	  SELECT 
+		  setweight(to_tsvector('english', coalesce(new.name,'')), 'A') ||
+      setweight(to_tsvector('english', coalesce(e.name,'')), 'A') ||
+      setweight(to_tsvector('english', coalesce(e.publisher_name,'')), 'A') ||
+      setweight(to_tsvector('english', coalesce(new.display_name,'')), 'B') ||
+      setweight(to_tsvector('english', coalesce(e.display_name,'')), 'C') ||
+      setweight(to_tsvector('english', coalesce(e.publisher_display_name,'')), 'C') ||
+      setweight(to_tsvector('english', coalesce(e.short_description,'')), 'D')  
+	  INTO new.tsv
+	  FROM extensions e
+	  WHERE e.id = new.extension_id;
+	 
+	  RETURN new;
+END
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER tsvupdate BEFORE INSERT OR UPDATE
+    ON themes FOR EACH ROW EXECUTE FUNCTION tsv_trigger();
 
 CREATE TABLE images (
   "id" bigserial PRIMARY KEY,
@@ -76,5 +98,6 @@ CREATE TABLE images (
 
 DROP TABLE images;
 DROP TABLE themes;
+DROP FUNCTION tsv_trigger;
 DROP TABLE extensions;
 DROP extension cube;

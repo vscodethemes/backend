@@ -39,6 +39,31 @@ CREATE TYPE public.river_job_state AS ENUM (
 );
 
 
+--
+-- Name: tsv_trigger(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.tsv_trigger() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+	  SELECT
+		  setweight(to_tsvector('english', coalesce(new.name,'')), 'A') ||
+      setweight(to_tsvector('english', coalesce(e.name,'')), 'A') ||
+      setweight(to_tsvector('english', coalesce(e.publisher_name,'')), 'A') ||
+      setweight(to_tsvector('english', coalesce(new.display_name,'')), 'B') ||
+      setweight(to_tsvector('english', coalesce(e.display_name,'')), 'C') ||
+      setweight(to_tsvector('english', coalesce(e.publisher_display_name,'')), 'C') ||
+      setweight(to_tsvector('english', coalesce(e.short_description,'')), 'D')
+	  INTO new.tsv
+	  FROM extensions e
+	  WHERE e.id = new.extension_id;
+
+	  RETURN new;
+END
+$$;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -241,7 +266,8 @@ CREATE TABLE public.themes (
     title_bar_active_foreground public.cube NOT NULL,
     title_bar_border public.cube,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
-    updated_at timestamp without time zone DEFAULT now() NOT NULL
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    tsv tsvector NOT NULL
 );
 
 
@@ -413,6 +439,13 @@ CREATE INDEX river_job_prioritized_fetching_index ON public.river_job USING btre
 --
 
 CREATE INDEX river_job_state_and_finalized_at_index ON public.river_job USING btree (state, finalized_at) WHERE (finalized_at IS NOT NULL);
+
+
+--
+-- Name: themes tsvupdate; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER tsvupdate BEFORE INSERT OR UPDATE ON public.themes FOR EACH ROW EXECUTE FUNCTION public.tsv_trigger();
 
 
 --
