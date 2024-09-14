@@ -6,7 +6,6 @@ import (
 	"log"
 	"net"
 
-	"github.com/danielgtaylor/huma/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
@@ -22,9 +21,11 @@ import (
 
 // Options for the CLI.
 type Options struct {
-	Host        string `help:"Host to listen on" default:"0.0.0.0"`
-	Port        int    `help:"Port to listen on" default:"8080"`
-	DatabaseURL string `help:"Database URL" required:"true"`
+	Host          string `help:"Host to listen on" default:"0.0.0.0"`
+	Port          int    `help:"Port to listen on" default:"8080"`
+	DatabaseURL   string `help:"Database URL" required:"true"`
+	PublicKeyPath string `help:"Path to the public key file" default:"key.rsa.pub"`
+	Issuer        string `help:"JWT issuer" default:"localhost:8080"`
 }
 
 func main() {
@@ -45,9 +46,10 @@ func main() {
 		// Create a new router & API
 		e := echo.New()
 		e.Use(echomiddleware.Logger())
-		humaApi := humaecho.New(e, huma.DefaultConfig("VS Code Themes API", "1.0.0"))
 
-		api.RegisterRoutes(humaApi, handlers.Handler{
+		humaApi := humaecho.New(e, api.Config())
+
+		api.RegisterRoutes(humaApi, options.PublicKeyPath, options.Issuer, handlers.Handler{
 			DBPool:      dbPool,
 			RiverClient: riverClient,
 		})

@@ -4,16 +4,16 @@ env:
   DB_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
   DBMATE_MIGRATIONS_DIR: ./internal/db/migrations
   DBMATE_SCHEMA_FILE: ./internal/db/schema.sql
+  API_PORT: 8080
 
 tasks:
   api:
     desc: Start the api server.
     deps:
       - db-wait
+      - generate-keyset
     cmds:
-      - go run cmd/api/main.go --database-url "$DB_URL&application_name=api" --port $PORT 
-    env:
-      PORT: 8080
+      - go run cmd/api/main.go --database-url "$DB_URL&application_name=api" --port $API_PORT 
   
   workers:
     desc: Start the workers server.
@@ -76,4 +76,13 @@ tasks:
     desc: Start objectstore
     cmds:
       - docker-compose up objectstore
+
+  generate-keyset:
+    desc: Generate keyset
+    cmds:
+      - go run cmd/generate-keyset/main.go
       
+  generate-jwt:
+    desc: Generate JWT
+    cmds:
+      - go run cmd/generate-jwt/main.go --issuer localhost:$API_PORT

@@ -9,6 +9,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/jackc/pgx/v5"
+	"github.com/vscodethemes/backend/internal/api/middleware"
 	"github.com/vscodethemes/backend/internal/db"
 )
 
@@ -20,6 +21,9 @@ var GetExtensionOperation = huma.Operation{
 	Description: "Get an extension and it's themes.",
 	Tags:        []string{"Extensions"},
 	Errors:      []int{http.StatusBadRequest, http.StatusNotFound},
+	Security: []map[string][]string{
+		middleware.BearerAuthSecurity("extension:read"),
+	},
 }
 
 type GetExtensionInput struct {
