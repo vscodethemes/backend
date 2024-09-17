@@ -110,11 +110,11 @@ int main() {
 
 export const php = `<?php
 
-class Artist extends Model {
+class Theme extends Model {
   /**
    * @var string
    */
-  protected $table = "artists";
+  protected $table = "themes";
 
   public function new(string $name): self {
     return self::create([
