@@ -71,9 +71,7 @@ func main() {
 
 	// Create river client.
 	riverClient, err := river.NewClient(riverpgxv5.New(dbPool), &river.Config{
-		Queues: map[string]river.QueueConfig{
-			river.QueueDefault: {MaxWorkers: 100},
-		},
+		Queues:  workers.QueueConfig(),
 		Workers: workersRegistry,
 		Logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 			Level: slog.LevelWarn,

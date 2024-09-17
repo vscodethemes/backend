@@ -14,6 +14,7 @@ type QueryOptionSortBy int
 
 const (
 	SortByLastUpdated   QueryOptionSortBy = 1
+	SortByInstalls      QueryOptionSortBy = 4
 	SortByPublishedDate QueryOptionSortBy = 10
 )
 
@@ -32,7 +33,11 @@ type QueryOptionCriteria struct {
 type QueryOptionsFilterType int
 
 const (
-	FilterTypeSlug QueryOptionsFilterType = 7
+	FilterTypeCategory  QueryOptionsFilterType = 5
+	FilterTypeSlug      QueryOptionsFilterType = 7
+	FilterTypeUnknown8  QueryOptionsFilterType = 8
+	FilterTypeUnknown10 QueryOptionsFilterType = 10
+	FilterTypeUnknown12 QueryOptionsFilterType = 12
 )
 
 func WithPageNumber(pageNumber int) QueryOption {
@@ -59,15 +64,15 @@ func WithDirection(direction QueryOptionDirection) QueryOption {
 	}
 }
 
-func WithCriteria(criteria QueryOptionCriteria) QueryOption {
+func WithCriteria(filterType QueryOptionsFilterType, value string) QueryOption {
 	return func(o *QueryOptions) {
-		o.Criteria = append(o.Criteria, criteria)
+		o.Criteria = append(o.Criteria, QueryOptionCriteria{
+			FilterType: filterType,
+			Value:      value,
+		})
 	}
 }
 
 func WithSlug(slug string) QueryOption {
-	return WithCriteria(QueryOptionCriteria{
-		FilterType: FilterTypeSlug,
-		Value:      slug,
-	})
+	return WithCriteria(FilterTypeSlug, slug)
 }

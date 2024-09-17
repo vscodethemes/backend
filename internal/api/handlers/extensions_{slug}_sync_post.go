@@ -7,8 +7,8 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/jackc/pgx/v5"
-	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
+	"github.com/vscodethemes/backend/internal/api/middleware"
 	"github.com/vscodethemes/backend/internal/workers"
 )
 
@@ -20,6 +20,9 @@ var SyncExtensionOperation = huma.Operation{
 	Description: "Sync an extension by it's slug. Returns the sync job.",
 	Tags:        []string{"Extensions"},
 	Errors:      []int{http.StatusBadRequest},
+	Security: []map[string][]string{
+		middleware.BearerAuthSecurity("extension:write"),
+	},
 }
 
 type SyncExtensionInput struct {
@@ -39,9 +42,7 @@ func (h Handler) SyncExtension(ctx context.Context, input *SyncExtensionInput) (
 		result, err := h.RiverClient.InsertTx(ctx, tx, workers.SyncExtensionArgs{
 			PublisherName: input.PublisherName,
 			ExtensionName: input.ExtensionName,
-		}, &river.InsertOpts{
-			MaxAttempts: 10,
-		})
+		}, nil)
 		if err != nil {
 			return fmt.Errorf("failed to insert job: %w", err)
 		}

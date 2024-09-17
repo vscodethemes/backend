@@ -7,6 +7,8 @@ import (
 	"github.com/vscodethemes/backend/internal/marketplace"
 )
 
+// Workers
+
 type RegisterWorkersConfig struct {
 	Registry          *river.Workers
 	Directory         string
@@ -18,6 +20,11 @@ type RegisterWorkersConfig struct {
 }
 
 func RegisterWorkers(cfg RegisterWorkersConfig) error {
+	river.AddWorker(cfg.Registry, &ScanMostInstalledWorker{
+		Marketplace: marketplace.NewClient(),
+		DBPool:      cfg.DBPool,
+	})
+
 	river.AddWorker(cfg.Registry, &SyncExtensionWorker{
 		Marketplace:       marketplace.NewClient(),
 		Directory:         cfg.Directory,
@@ -29,4 +36,20 @@ func RegisterWorkers(cfg RegisterWorkersConfig) error {
 	})
 
 	return nil
+}
+
+// Queues
+
+const (
+	ScanMostInstalledQueue     = "scan-most-installed"
+	SyncExtensionPriorityQueue = "sync-extension-priority"
+	SyncExtensionBackfillQueue = "sync-extension-backfill"
+)
+
+func QueueConfig() map[string]river.QueueConfig {
+	return map[string]river.QueueConfig{
+		SyncExtensionPriorityQueue: {MaxWorkers: 5},
+		SyncExtensionBackfillQueue: {MaxWorkers: 1},
+		ScanMostInstalledQueue:     {MaxWorkers: 1},
+	}
 }

@@ -22,6 +22,7 @@ func Config() huma.Config {
 func RegisterRoutes(api huma.API, publicKeyPath string, issuer string, h handlers.Handler) {
 	api.UseMiddleware(middleware.Auth(api, publicKeyPath, issuer))
 
+	huma.Register(api, handlers.ScanExtensionsOperation, h.ScanExtensions)
 	huma.Register(api, handlers.GetExtensionOperation, h.GetExtension)
 	huma.Register(api, handlers.SyncExtensionOperation, h.SyncExtension)
 	huma.Register(api, handlers.GetJobOperation, h.GetJob)

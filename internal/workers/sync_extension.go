@@ -31,7 +31,16 @@ type SyncExtensionArgs struct {
 	PublisherName string
 }
 
-func (SyncExtensionArgs) Kind() string { return "syncExtension" }
+func (SyncExtensionArgs) Kind() string {
+	return "syncExtension"
+}
+
+func (SyncExtensionArgs) InsertOpts() river.InsertOpts {
+	return river.InsertOpts{
+		Queue:       SyncExtensionPriorityQueue,
+		MaxAttempts: 5,
+	}
+}
 
 type SyncExtensionWorker struct {
 	river.WorkerDefaults[SyncExtensionArgs]
@@ -121,6 +130,12 @@ func (w *SyncExtensionWorker) Work(ctx context.Context, job *river.Job[SyncExten
 	group.SetLimit(10)
 	for i, themeContribute := range info.ThemeContributes {
 		group.Go(func() error {
+			// Skip if theme path is not a json file.
+			if filepath.Ext(themeContribute.Path) != ".json" {
+				log.Infof("Skipping theme: %s", themeContribute.Path)
+				return nil
+			}
+
 			log.Infof("Generating images for theme: %s", themeContribute.Path)
 			result, err := cli.GenerateImages(imagesCtx, extensionPath, themeContribute, imagesPath)
 			if err != nil {
@@ -140,7 +155,8 @@ func (w *SyncExtensionWorker) Work(ctx context.Context, job *river.Job[SyncExten
 	}
 
 	if len(imagesResults) == 0 {
-		return fmt.Errorf("no images generated")
+		log.Info("No images generated, skipping extension")
+		return nil
 	}
 
 	// Upload images for each theme concurrency, up to a max of 10 subroutines.
@@ -521,6 +537,8 @@ func saveExtension(ctx context.Context, dbPool *pgxpool.Pool, extension db.Upser
 				}
 			}
 		}
+
+		// TODO: Delete old themes and images.
 
 		return nil
 	})
