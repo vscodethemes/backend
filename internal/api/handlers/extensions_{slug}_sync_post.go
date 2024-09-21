@@ -28,6 +28,7 @@ var SyncExtensionOperation = huma.Operation{
 type SyncExtensionInput struct {
 	PublisherName string `path:"publisher" example:"sdras" doc:"The publisher name"`
 	ExtensionName string `path:"name" example:"night-owl" doc:"The extension name"`
+	Force         bool   `query:"force" example:"true" doc:"Force the sync" default:"false"`
 }
 
 type SyncExtensionOutput struct {
@@ -42,6 +43,7 @@ func (h Handler) SyncExtension(ctx context.Context, input *SyncExtensionInput) (
 		result, err := h.RiverClient.InsertTx(ctx, tx, workers.SyncExtensionArgs{
 			PublisherName: input.PublisherName,
 			ExtensionName: input.ExtensionName,
+			Force:         input.Force,
 		}, nil)
 		if err != nil {
 			return fmt.Errorf("failed to insert job: %w", err)

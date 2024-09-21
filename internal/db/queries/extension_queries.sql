@@ -5,6 +5,7 @@ SELECT
 	e.publisher_name,
 	e.publisher_display_name,
 	e.short_description,
+	e.published_at,
 	jsonb_agg(json_build_object(
 		'name', t.name,
 		'display_name', t.display_name,

@@ -3,6 +3,7 @@ package workers
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"math/big"
 	"os"
@@ -29,6 +30,7 @@ import (
 type SyncExtensionArgs struct {
 	ExtensionName string
 	PublisherName string
+	Force         bool
 }
 
 func (SyncExtensionArgs) Kind() string {
@@ -72,6 +74,16 @@ func (w *SyncExtensionWorker) Work(ctx context.Context, job *river.Job[SyncExten
 	}
 
 	extension := queryResults[0]
+
+	isUpToDate, err := w.isExtensionUpToDate(ctx, extension)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("failed to check if extension is up to date: %w", err)
+	}
+
+	if isUpToDate && !job.Args.Force {
+		log.Infof("Extension is up to date, skipping")
+		return nil
+	}
 
 	upsertExtensionParams, err := convertUpsertExtensionParams(extension)
 	if err != nil {
@@ -243,6 +255,27 @@ func (w *SyncExtensionWorker) Work(ctx context.Context, job *river.Job[SyncExten
 	log.Infof("Extension saved to database")
 
 	return nil
+}
+
+func (w *SyncExtensionWorker) isExtensionUpToDate(ctx context.Context, extension marketplace.ExtensionResult) (bool, error) {
+	// Check if extension exists in the database with the same published_at date and skip if it does.
+	queries := db.New(w.DBPool)
+	savedExtension, err := queries.GetExtension(ctx, db.GetExtensionParams{
+		ExtensionName: extension.ExtensionName,
+		PublisherName: extension.Publisher.PublisherName,
+		Language:      "go",
+	})
+
+	if err != nil {
+		return false, fmt.Errorf("failed to get extension: %w", err)
+	}
+
+	publishedAt, err := time.Parse(time.RFC3339, extension.PublishedDate)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse publishedAt: %w", err)
+	}
+
+	return savedExtension.PublishedAt.Time.Equal(publishedAt), nil
 }
 
 func convertUpsertExtensionParams(extension marketplace.ExtensionResult) (db.UpsertExtensionParams, error) {

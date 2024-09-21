@@ -18,6 +18,7 @@ SELECT
 	e.publisher_name,
 	e.publisher_display_name,
 	e.short_description,
+	e.published_at,
 	jsonb_agg(json_build_object(
 		'name', t.name,
 		'display_name', t.display_name,
@@ -45,6 +46,7 @@ type GetExtensionRow struct {
 	PublisherName        string
 	PublisherDisplayName string
 	ShortDescription     pgtype.Text
+	PublishedAt          pgtype.Timestamp
 	Themes               []byte
 }
 
@@ -57,6 +59,7 @@ func (q *Queries) GetExtension(ctx context.Context, arg GetExtensionParams) (Get
 		&i.PublisherName,
 		&i.PublisherDisplayName,
 		&i.ShortDescription,
+		&i.PublishedAt,
 		&i.Themes,
 	)
 	return i, err
