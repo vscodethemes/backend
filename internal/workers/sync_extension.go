@@ -53,6 +53,10 @@ type SyncExtensionWorker struct {
 	DBPool            *pgxpool.Pool
 }
 
+func (w *SyncExtensionWorker) Timeout(*river.Job[SyncExtensionArgs]) time.Duration {
+	return 5 * time.Minute
+}
+
 func (w *SyncExtensionWorker) Work(ctx context.Context, job *river.Job[SyncExtensionArgs]) error {
 	extensionSlug := fmt.Sprintf("%s.%s", job.Args.PublisherName, job.Args.ExtensionName)
 	log.Infof("Syncing extension package: %s", extensionSlug)
