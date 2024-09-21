@@ -21,8 +21,8 @@ const (
 type QueryOptionDirection int
 
 const (
-	DirectionAsc QueryOptionDirection = 1
-	DirectionDes QueryOptionDirection = 2
+	DirectionAsc  QueryOptionDirection = 1
+	DirectionDesc QueryOptionDirection = 2
 )
 
 type QueryOptionCriteria struct {

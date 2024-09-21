@@ -20,7 +20,7 @@ type RegisterWorkersConfig struct {
 }
 
 func RegisterWorkers(cfg RegisterWorkersConfig) error {
-	river.AddWorker(cfg.Registry, &ScanMostInstalledWorker{
+	river.AddWorker(cfg.Registry, &ScanExtensionsWorker{
 		Marketplace: marketplace.NewClient(),
 		DBPool:      cfg.DBPool,
 	})
@@ -41,7 +41,7 @@ func RegisterWorkers(cfg RegisterWorkersConfig) error {
 // Queues
 
 const (
-	ScanMostInstalledQueue     = "scan-most-installed"
+	ScanExtensionsQueue        = "scan-extensions"
 	SyncExtensionPriorityQueue = "sync-extension-priority"
 	SyncExtensionBackfillQueue = "sync-extension-backfill"
 )
@@ -50,6 +50,6 @@ func QueueConfig() map[string]river.QueueConfig {
 	return map[string]river.QueueConfig{
 		SyncExtensionPriorityQueue: {MaxWorkers: 5},
 		SyncExtensionBackfillQueue: {MaxWorkers: 1},
-		ScanMostInstalledQueue:     {MaxWorkers: 1},
+		ScanExtensionsQueue:        {MaxWorkers: 1},
 	}
 }

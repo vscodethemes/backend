@@ -11,6 +11,7 @@ import (
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 	"github.com/vscodethemes/backend/internal/api/middleware"
+	"github.com/vscodethemes/backend/internal/marketplace/qo"
 	"github.com/vscodethemes/backend/internal/workers"
 )
 
@@ -46,10 +47,17 @@ func (h Handler) ScanExtensions(ctx context.Context, input *ScanExtensionsInput)
 
 	var jobArgs river.JobArgs
 	if input.Type == "lastUpdated" || input.Type == "" {
-		// TODO
-		// jobArgs = workers.ScanLastUpdated{MaxExtensions: maxExtensions}
+		jobArgs = workers.ScanExtensionsArgs{
+			MaxExtensions: maxExtensions,
+			SortBy:        qo.SortByLastUpdated,
+			SortDirection: qo.DirectionDesc,
+		}
 	} else if input.Type == "mostInstalled" {
-		jobArgs = workers.ScanMostInstalled{MaxExtensions: maxExtensions}
+		jobArgs = workers.ScanExtensionsArgs{
+			MaxExtensions: maxExtensions,
+			SortBy:        qo.SortByInstalls,
+			SortDirection: qo.DirectionDesc,
+		}
 	} else {
 		return nil, huma.Error400BadRequest(fmt.Sprintf("Unknown scan type: %s", input.Type))
 	}

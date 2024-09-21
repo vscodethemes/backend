@@ -3,6 +3,7 @@ package workers
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -12,28 +13,34 @@ import (
 	"github.com/vscodethemes/backend/internal/marketplace/qo"
 )
 
-type ScanMostInstalled struct {
+type ScanExtensionsArgs struct {
 	MaxExtensions int
+	SortBy        qo.QueryOptionSortBy
+	SortDirection qo.QueryOptionDirection
 }
 
-func (ScanMostInstalled) Kind() string {
-	return "scanMostInstalled"
+func (ScanExtensionsArgs) Kind() string {
+	return "scanExtensions"
 }
 
-func (ScanMostInstalled) InsertOpts() river.InsertOpts {
+func (ScanExtensionsArgs) InsertOpts() river.InsertOpts {
 	return river.InsertOpts{
-		Queue:       ScanMostInstalledQueue,
-		MaxAttempts: 5,
+		Queue:       ScanExtensionsQueue,
+		MaxAttempts: 1,
 	}
 }
 
-type ScanMostInstalledWorker struct {
-	river.WorkerDefaults[ScanMostInstalled]
+type ScanExtensionsWorker struct {
+	river.WorkerDefaults[ScanExtensionsArgs]
 	Marketplace *marketplace.Client
 	DBPool      *pgxpool.Pool
 }
 
-func (w *ScanMostInstalledWorker) Work(ctx context.Context, job *river.Job[ScanMostInstalled]) error {
+func (w *ScanExtensionsWorker) Timeout(*river.Job[ScanExtensionsArgs]) time.Duration {
+	return 5 * time.Minute
+}
+
+func (w *ScanExtensionsWorker) Work(ctx context.Context, job *river.Job[ScanExtensionsArgs]) error {
 	client, err := river.ClientFromContextSafely[pgx.Tx](ctx)
 	if err != nil {
 		return fmt.Errorf("error getting client from context: %w", err)
@@ -45,8 +52,8 @@ func (w *ScanMostInstalledWorker) Work(ctx context.Context, job *river.Job[ScanM
 
 	for extensionsScanned < job.Args.MaxExtensions {
 		queryResults, err := w.Marketplace.NewQuery(ctx,
-			qo.WithDirection(qo.DirectionDes),
-			qo.WithSortBy(qo.SortByInstalls),
+			qo.WithSortBy(job.Args.SortBy),
+			qo.WithDirection(job.Args.SortDirection),
 			qo.WithCriteria(qo.FilterTypeCategory, "Themes"),
 			qo.WithCriteria(qo.FilterTypeUnknown8, "Microsoft.VisualStudio.Code"),
 			qo.WithCriteria(qo.FilterTypeUnknown10, "target:\"Microsoft.VisualStudio.Code\" "),
