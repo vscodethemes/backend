@@ -26,7 +26,7 @@ func (ScanExtensionsArgs) Kind() string {
 func (ScanExtensionsArgs) InsertOpts() river.InsertOpts {
 	return river.InsertOpts{
 		Queue:       ScanExtensionsQueue,
-		MaxAttempts: 1,
+		MaxAttempts: 5,
 	}
 }
 
@@ -80,6 +80,10 @@ func (w *ScanExtensionsWorker) Work(ctx context.Context, job *river.Job[ScanExte
 			}
 
 			log.Infof("Adding extension to batch: %s.%s", extension.Publisher.PublisherName, extension.ExtensionName)
+
+			// TODO: Add option to stop scanning if we reach an extension exists with the same published date. This
+			// would be used when scanning by most recently published periodically.
+
 			batch = append(batch, river.InsertManyParams{
 				Args: SyncExtensionArgs{
 					PublisherName: extension.Publisher.PublisherName,
