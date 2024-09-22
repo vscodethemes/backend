@@ -9,22 +9,26 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/gommon/log"
 	"github.com/riverqueue/river"
+	"github.com/vscodethemes/backend/internal/db"
 	"github.com/vscodethemes/backend/internal/marketplace"
 	"github.com/vscodethemes/backend/internal/marketplace/qo"
 )
 
-type scanPriority string
+type ScanPriority string
 
 const (
-	ScanPriorityHigh scanPriority = "high"
-	ScanPriorityLow  scanPriority = "low"
+	ScanPriorityHigh ScanPriority = "high"
+	ScanPriorityLow  ScanPriority = "low"
 )
 
 type ScanExtensionsArgs struct {
-	MaxExtensions int
-	SortBy        qo.QueryOptionSortBy
-	SortDirection qo.QueryOptionDirection
-	Priority      scanPriority
+	MaxExtensions            int                     `json:"maxExtensions"`
+	SortBy                   qo.QueryOptionSortBy    `json:"sortBy"`
+	SortDirection            qo.QueryOptionDirection `json:"sortDirection"`
+	Priority                 ScanPriority            `json:"priority"`
+	BatchSize                int                     `json:"batchSize"`
+	StopAtEqualPublishedDate bool                    `json:"stopAtEqualPublishedDate"`
+	Force                    bool                    `json:"force"`
 }
 
 func (ScanExtensionsArgs) Kind() string {
@@ -59,11 +63,22 @@ func (w *ScanExtensionsWorker) Work(ctx context.Context, job *river.Job[ScanExte
 		insertQueue = SyncExtensionPriorityQueue
 	}
 
+	batchSize := 50
+	if job.Args.BatchSize > 0 {
+		batchSize = job.Args.BatchSize
+	}
+
+	queries := db.New(w.DBPool)
+
 	extensionsScanned := 0
 	pageNumber := 1
-	pageSize := 50
+	stopScanning := false
+	for !stopScanning {
+		log.Infof("Scanning page %d", pageNumber)
 
-	for extensionsScanned < job.Args.MaxExtensions {
+		// Add a delay to avoid rate limiting from the martketplace API.
+		time.Sleep(2 * time.Second)
+
 		queryResults, err := w.Marketplace.NewQuery(ctx,
 			qo.WithSortBy(job.Args.SortBy),
 			qo.WithDirection(job.Args.SortDirection),
@@ -72,13 +87,14 @@ func (w *ScanExtensionsWorker) Work(ctx context.Context, job *river.Job[ScanExte
 			qo.WithCriteria(qo.FilterTypeUnknown10, "target:\"Microsoft.VisualStudio.Code\" "),
 			qo.WithCriteria(qo.FilterTypeUnknown12, "37888"),
 			qo.WithPageNumber(pageNumber),
-			qo.WithPageSize(pageSize),
+			qo.WithPageSize(batchSize),
 		)
 		if err != nil {
 			return fmt.Errorf("failed to query marketplace: %w", err)
 		}
 
 		if len(queryResults) == 0 {
+			log.Infof("No more extensions found, stopping scan")
 			break
 		}
 
@@ -86,34 +102,51 @@ func (w *ScanExtensionsWorker) Work(ctx context.Context, job *river.Job[ScanExte
 
 		batch := []river.InsertManyParams{}
 		for _, extension := range queryResults {
-			extensionsScanned++
-
-			if extensionsScanned > job.Args.MaxExtensions {
-				continue
+			if extensionsScanned >= job.Args.MaxExtensions {
+				log.Infof("Reached max extensions, stopping scan")
+				stopScanning = true
+				break
 			}
 
-			log.Infof("Adding extension to batch: %s.%s", extension.Publisher.PublisherName, extension.ExtensionName)
+			// If the job is configured to stop at the first extension with the same published date,
+			// check if the extension is up to date and stop scanning if it is. This is useful when
+			// sorting by last updated data.
+			if job.Args.StopAtEqualPublishedDate {
+				isUpToDate, err := isExtensionUpToDate(ctx, queries, extension)
+				if err != nil {
+					return fmt.Errorf("failed to check if extension is up to date: %w", err)
+				}
 
-			// TODO: Add option to stop scanning if we reach an extension exists with the same published date.
-			// This would be used when scanning by most recently published periodically.
+				if isUpToDate {
+					log.Infof("Extension %s.%s is up to date, stopping scan", extension.Publisher.PublisherName, extension.ExtensionName)
+					stopScanning = true
+					break
+				}
+			}
+
+			log.Debugf("Adding extension to batch: %s.%s", extension.Publisher.PublisherName, extension.ExtensionName)
 
 			batch = append(batch, river.InsertManyParams{
 				Args: SyncExtensionArgs{
 					PublisherName: extension.Publisher.PublisherName,
 					ExtensionName: extension.ExtensionName,
+					Force:         job.Args.Force,
 				},
 				InsertOpts: &river.InsertOpts{
 					Queue: insertQueue,
 				},
 			})
+
+			extensionsScanned++
 		}
 
-		count, err := client.InsertMany(ctx, batch)
-		if err != nil {
-			return fmt.Errorf("failed to insert job: %w", err)
+		if len(batch) > 0 {
+			if _, err = client.InsertMany(ctx, batch); err != nil {
+				return fmt.Errorf("failed to insert job: %w", err)
+			}
 		}
 
-		log.Infof("Scanned %d extensions", count)
+		log.Infof("Scanned %d extensions in batch, %d total", len(batch), extensionsScanned)
 	}
 
 	return nil

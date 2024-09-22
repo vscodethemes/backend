@@ -40,16 +40,16 @@ type GetExtensionOutput struct {
 
 type Extension struct {
 	Name                 string  `json:"name"`
-	DisplayName          string  `json:"display_name"`
-	PublisherName        string  `json:"publisher_name"`
-	PublisherDisplayName string  `json:"publisher_display_name"`
-	ShortDescription     *string `json:"short_description"`
+	DisplayName          string  `json:"displayName"`
+	PublisherName        string  `json:"publisherName"`
+	PublisherDisplayName string  `json:"publisherDisplayName"`
+	ShortDescription     *string `json:"shortDescription"`
 	Themes               []Theme `json:"themes"`
 }
 
 type Theme struct {
 	Name        string `json:"name"`
-	DisplayName string `json:"display_name"`
+	DisplayName string `json:"displayName"`
 	URL         string `json:"url"`
 }
 

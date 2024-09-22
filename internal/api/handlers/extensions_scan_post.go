@@ -8,7 +8,6 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/jackc/pgx/v5"
-	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 	"github.com/vscodethemes/backend/internal/api/middleware"
 	"github.com/vscodethemes/backend/internal/marketplace/qo"
@@ -29,8 +28,13 @@ var ScanExtensionsOperation = huma.Operation{
 }
 
 type ScanExtensionsInput struct {
-	Type          string `query:"type" default:"lastUpdated" example:"lastUpdated" doc:"Type of scan to perform."`
-	MaxExtensions int    `query:"maxExtensions" example:"50" doc:"Maximum number of extensions to scan. If not provided, all extensions will be scanned."`
+	Priority                 workers.ScanPriority `query:"priority" default:"low" example:"low" doc:"Priority of the scan, set to 'low' or 'high'."`
+	SortBy                   string               `query:"sortBy" default:"lastUpdated" example:"lastUpdated" doc:"Type of scan to perform, set to 'lastUpdated' or 'mostInstalled'."`
+	SortDirection            string               `query:"direction" default:"desc" example:"desc" doc:"Direction of the sort, set to 'asc' or 'desc'."`
+	BatchSize                int                  `query:"batchSize" default:"50" example:"100" doc:"Number of extensions to scan in each batch."`
+	MaxExtensions            int                  `query:"maxExtensions" example:"200" doc:"Maximum number of extensions to scan. If not provided, all extensions will be scanned."`
+	StopAtEqualPublishedDate bool                 `query:"stopAtEqualPublishedDate" default:"false" example:"true" doc:"Stop scanning when the published date is equal to the last scanned extension."`
+	ForceUpdate              bool                 `query:"forceUpdate" default:"false" example:"true" doc:"Force the extension to update even if publisehd date is equal."`
 }
 
 type ScanExtensions struct {
@@ -40,31 +44,42 @@ type ScanExtensions struct {
 }
 
 func (h Handler) ScanExtensions(ctx context.Context, input *ScanExtensionsInput) (*ScanExtensions, error) {
+	priority := workers.ScanPriorityLow
+	if input.Priority == workers.ScanPriorityHigh {
+		priority = workers.ScanPriorityHigh
+	}
+
+	sortBy := qo.SortByLastUpdated
+	if input.SortBy == "mostInstalled" {
+		sortBy = qo.SortByInstalls
+	}
+
+	sortDirection := qo.DirectionDesc
+	if input.SortDirection == "asc" {
+		sortDirection = qo.DirectionAsc
+	}
+
+	batchSize := 50
+	if input.BatchSize > 0 {
+		batchSize = input.BatchSize
+	}
+
 	maxExtensions := math.MaxInt
 	if input.MaxExtensions != 0 {
 		maxExtensions = input.MaxExtensions
 	}
 
-	var jobArgs river.JobArgs
-	if input.Type == "lastUpdated" || input.Type == "" {
-		jobArgs = workers.ScanExtensionsArgs{
-			MaxExtensions: maxExtensions,
-			SortBy:        qo.SortByLastUpdated,
-			SortDirection: qo.DirectionDesc,
-		}
-	} else if input.Type == "mostInstalled" {
-		jobArgs = workers.ScanExtensionsArgs{
-			MaxExtensions: maxExtensions,
-			SortBy:        qo.SortByInstalls,
-			SortDirection: qo.DirectionDesc,
-		}
-	} else {
-		return nil, huma.Error400BadRequest(fmt.Sprintf("Unknown scan type: %s", input.Type))
-	}
-
 	var job *rivertype.JobRow
 	err := pgx.BeginFunc(ctx, h.DBPool, func(tx pgx.Tx) error {
-		result, err := h.RiverClient.InsertTx(ctx, tx, jobArgs, nil)
+		result, err := h.RiverClient.InsertTx(ctx, tx, workers.ScanExtensionsArgs{
+			Priority:                 priority,
+			SortBy:                   sortBy,
+			SortDirection:            sortDirection,
+			BatchSize:                batchSize,
+			MaxExtensions:            maxExtensions,
+			StopAtEqualPublishedDate: input.StopAtEqualPublishedDate,
+			Force:                    input.ForceUpdate,
+		}, nil)
 		if err != nil {
 			return fmt.Errorf("failed to insert job: %w", err)
 		}

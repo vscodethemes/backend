@@ -28,9 +28,9 @@ import (
 )
 
 type SyncExtensionArgs struct {
-	ExtensionName string
-	PublisherName string
-	Force         bool
+	ExtensionName string `json:"extensionName"`
+	PublisherName string `json:"publisherName"`
+	Force         bool   `json:"force"`
 }
 
 func (SyncExtensionArgs) Kind() string {
@@ -78,8 +78,8 @@ func (w *SyncExtensionWorker) Work(ctx context.Context, job *river.Job[SyncExten
 
 	extension := queryResults[0]
 
-	isUpToDate, err := w.isExtensionUpToDate(ctx, extension)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	isUpToDate, err := isExtensionUpToDate(ctx, db.New(w.DBPool), extension)
+	if err != nil {
 		return fmt.Errorf("failed to check if extension is up to date: %w", err)
 	}
 
@@ -262,14 +262,16 @@ func (w *SyncExtensionWorker) Work(ctx context.Context, job *river.Job[SyncExten
 	return nil
 }
 
-func (w *SyncExtensionWorker) isExtensionUpToDate(ctx context.Context, extension marketplace.ExtensionResult) (bool, error) {
-	// Check if extension exists in the database with the same published_at date and skip if it does.
-	queries := db.New(w.DBPool)
+func isExtensionUpToDate(ctx context.Context, queries *db.Queries, extension marketplace.ExtensionResult) (bool, error) {
 	savedExtension, err := queries.GetExtension(ctx, db.GetExtensionParams{
 		ExtensionName: extension.ExtensionName,
 		PublisherName: extension.Publisher.PublisherName,
 		Language:      "go",
 	})
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
 
 	if err != nil {
 		return false, fmt.Errorf("failed to get extension: %w", err)
