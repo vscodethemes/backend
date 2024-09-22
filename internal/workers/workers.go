@@ -1,9 +1,13 @@
 package workers
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/rivertype"
 	"github.com/vscodethemes/backend/internal/marketplace"
 )
 
@@ -52,4 +56,19 @@ func QueueConfig() map[string]river.QueueConfig {
 		SyncExtensionBackfillQueue: {MaxWorkers: 1},
 		ScanExtensionsQueue:        {MaxWorkers: 1},
 	}
+}
+
+// Error handling
+
+type ErrorHandler struct{}
+
+func (*ErrorHandler) HandleError(ctx context.Context, job *rivertype.JobRow, err error) *river.ErrorHandlerResult {
+	fmt.Printf("Job errored with: %s\n", err)
+	return nil
+}
+
+func (*ErrorHandler) HandlePanic(ctx context.Context, job *rivertype.JobRow, panicVal any, trace string) *river.ErrorHandlerResult {
+	fmt.Printf("Job panicked with: %v\n", panicVal)
+	fmt.Printf("Stack trace: %s\n", trace)
+	return nil
 }

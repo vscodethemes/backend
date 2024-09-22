@@ -76,6 +76,7 @@ func main() {
 		Logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 			Level: slog.LevelWarn,
 		})),
+		ErrorHandler: &workers.ErrorHandler{},
 	})
 	if err != nil {
 		log.Fatal(fmt.Errorf("failed to create river client: %w", err))

@@ -144,10 +144,10 @@ func (w *SyncExtensionWorker) Work(ctx context.Context, job *river.Job[SyncExten
 	}
 
 	// Generate images for each theme concurrency, up to a max of 10 subroutines.
-	imagesResults := make([]*cli.GenerateImagesResult, len(info.ThemeContributes))
+	imagesResults := []cli.GenerateImagesResult{}
 	group, imagesCtx := errgroup.WithContext(ctx)
 	group.SetLimit(10)
-	for i, themeContribute := range info.ThemeContributes {
+	for _, themeContribute := range info.ThemeContributes {
 		group.Go(func() error {
 			// Skip if theme path is not a json file.
 			if filepath.Ext(themeContribute.Path) != ".json" {
@@ -161,10 +161,12 @@ func (w *SyncExtensionWorker) Work(ctx context.Context, job *river.Job[SyncExten
 				return fmt.Errorf("failed to generate images for %s: %w", themeContribute.Path, err)
 			}
 
-			// Override the absolute path with the relative path, which we use later to save to the database.
-			result.Theme.Path = themeContribute.Path
+			if result != nil {
+				// Override the absolute path with the relative path, which we use later to save to the database.
+				result.Theme.Path = themeContribute.Path
+				imagesResults = append(imagesResults, *result)
+			}
 
-			imagesResults[i] = result
 			return nil
 		})
 	}
