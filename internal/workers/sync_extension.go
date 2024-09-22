@@ -63,6 +63,9 @@ func (w *SyncExtensionWorker) Work(ctx context.Context, job *river.Job[SyncExten
 	extensionSlug := fmt.Sprintf("%s.%s", job.Args.PublisherName, job.Args.ExtensionName)
 	log.Infof("Syncing extension package: %s", extensionSlug)
 
+	// Add a delay to avoid rate limiting from the martketplace API.
+	time.Sleep(2 * time.Second)
+
 	// Fetch extension from the marketplace API.
 	queryResults, err := w.Marketplace.NewQuery(ctx, qo.WithSlug(extensionSlug))
 	if err != nil {
