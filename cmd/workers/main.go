@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"log/slog"
+	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -12,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/vscodethemes/backend/internal/workers"
 )
 
@@ -67,25 +70,25 @@ func main() {
 	}
 
 	// Create river client.
-	// riverClient, err := river.NewClient(riverpgxv5.New(dbPool), &river.Config{
-	// 	Queues:  workers.QueueConfig(),
-	// 	Workers: workersRegistry,
-	// 	Logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-	// 		Level: slog.LevelWarn,
-	// 	})),
-	// })
-	// if err != nil {
-	// 	log.Fatal(fmt.Errorf("failed to create river client: %w", err))
-	// }
+	riverClient, err := river.NewClient(riverpgxv5.New(dbPool), &river.Config{
+		Queues:  workers.QueueConfig(),
+		Workers: workersRegistry,
+		Logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelWarn,
+		})),
+	})
+	if err != nil {
+		log.Fatal(fmt.Errorf("failed to create river client: %w", err))
+	}
 
-	// if err := riverClient.Start(context.Background()); err != nil {
-	// 	log.Fatal(fmt.Errorf("failed to start river client: %w", err))
-	// }
+	if err := riverClient.Start(context.Background()); err != nil {
+		log.Fatal(fmt.Errorf("failed to start river client: %w", err))
+	}
 
-	// fmt.Println("Waiting for jobs...")
+	fmt.Println("Waiting for jobs...")
 
-	// // TODO: Handle signals to gracefully stop the river client.
-	// // https://riverqueue.com/docs/graceful-shutdown
+	// TODO: Handle signals to gracefully stop the river client.
+	// https://riverqueue.com/docs/graceful-shutdown
 
-	// <-riverClient.Stopped()
+	<-riverClient.Stopped()
 }
