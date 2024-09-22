@@ -48,7 +48,7 @@ const (
 
 func QueueConfig() map[string]river.QueueConfig {
 	return map[string]river.QueueConfig{
-		SyncExtensionPriorityQueue: {MaxWorkers: 5},
+		SyncExtensionPriorityQueue: {MaxWorkers: 1},
 		SyncExtensionBackfillQueue: {MaxWorkers: 1},
 		ScanExtensionsQueue:        {MaxWorkers: 1},
 	}

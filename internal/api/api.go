@@ -26,4 +26,6 @@ func RegisterRoutes(api huma.API, publicKeyPath string, issuer string, h handler
 	huma.Register(api, handlers.GetExtensionOperation, h.GetExtension)
 	huma.Register(api, handlers.SyncExtensionOperation, h.SyncExtension)
 	huma.Register(api, handlers.GetJobOperation, h.GetJob)
+	huma.Register(api, handlers.PauseJobsOperation, h.PauseJobs)
+	huma.Register(api, handlers.ResumeJobsOperation, h.ResumeJobs)
 }

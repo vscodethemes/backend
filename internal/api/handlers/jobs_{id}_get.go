@@ -9,6 +9,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/riverqueue/river/rivertype"
+	"github.com/vscodethemes/backend/internal/api/middleware"
 )
 
 var GetJobOperation = huma.Operation{
@@ -19,6 +20,9 @@ var GetJobOperation = huma.Operation{
 	Description: "Get the state of a job by it's ID.",
 	Tags:        []string{"Jobs"},
 	Errors:      []int{http.StatusNotFound},
+	Security: []map[string][]string{
+		middleware.BearerAuthSecurity("jobs:read"),
+	},
 }
 
 type GetJobInput struct {

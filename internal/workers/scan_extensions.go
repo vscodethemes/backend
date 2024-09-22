@@ -13,10 +13,18 @@ import (
 	"github.com/vscodethemes/backend/internal/marketplace/qo"
 )
 
+type scanPriority string
+
+const (
+	ScanPriorityHigh scanPriority = "high"
+	ScanPriorityLow  scanPriority = "low"
+)
+
 type ScanExtensionsArgs struct {
 	MaxExtensions int
 	SortBy        qo.QueryOptionSortBy
 	SortDirection qo.QueryOptionDirection
+	Priority      scanPriority
 }
 
 func (ScanExtensionsArgs) Kind() string {
@@ -44,6 +52,11 @@ func (w *ScanExtensionsWorker) Work(ctx context.Context, job *river.Job[ScanExte
 	client, err := river.ClientFromContextSafely[pgx.Tx](ctx)
 	if err != nil {
 		return fmt.Errorf("error getting client from context: %w", err)
+	}
+
+	insertQueue := SyncExtensionBackfillQueue
+	if job.Args.Priority == ScanPriorityHigh {
+		insertQueue = SyncExtensionPriorityQueue
 	}
 
 	extensionsScanned := 0
@@ -80,10 +93,17 @@ func (w *ScanExtensionsWorker) Work(ctx context.Context, job *river.Job[ScanExte
 			}
 
 			log.Infof("Adding extension to batch: %s.%s", extension.Publisher.PublisherName, extension.ExtensionName)
+
+			// TODO: Add option to stop scanning if we reach an extension exists with the same published date.
+			// This would be used when scanning by most recently published periodically.
+
 			batch = append(batch, river.InsertManyParams{
 				Args: SyncExtensionArgs{
 					PublisherName: extension.Publisher.PublisherName,
 					ExtensionName: extension.ExtensionName,
+				},
+				InsertOpts: &river.InsertOpts{
+					Queue: insertQueue,
 				},
 			})
 		}
