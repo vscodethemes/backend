@@ -148,6 +148,39 @@ ALTER SEQUENCE public.images_id_seq OWNED BY public.images.id;
 
 
 --
+-- Name: river_client; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE UNLOGGED TABLE public.river_client (
+    id text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    paused_at timestamp with time zone,
+    updated_at timestamp with time zone NOT NULL,
+    CONSTRAINT name_length CHECK (((char_length(id) > 0) AND (char_length(id) < 128)))
+);
+
+
+--
+-- Name: river_client_queue; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE UNLOGGED TABLE public.river_client_queue (
+    river_client_id text NOT NULL,
+    name text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    max_workers bigint DEFAULT 0 NOT NULL,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    num_jobs_completed bigint DEFAULT 0 NOT NULL,
+    num_jobs_running bigint DEFAULT 0 NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    CONSTRAINT name_length CHECK (((char_length(name) > 0) AND (char_length(name) < 128))),
+    CONSTRAINT num_jobs_completed_zero_or_positive CHECK ((num_jobs_completed >= 0)),
+    CONSTRAINT num_jobs_running_zero_or_positive CHECK ((num_jobs_running >= 0))
+);
+
+
+--
 -- Name: river_job; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -168,6 +201,7 @@ CREATE TABLE public.river_job (
     metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
     queue text DEFAULT 'default'::text NOT NULL,
     tags character varying(255)[] DEFAULT '{}'::character varying[] NOT NULL,
+    unique_key bytea,
     CONSTRAINT finalized_or_finalized_at_null CHECK ((((finalized_at IS NULL) AND (state <> ALL (ARRAY['cancelled'::public.river_job_state, 'completed'::public.river_job_state, 'discarded'::public.river_job_state]))) OR ((finalized_at IS NOT NULL) AND (state = ANY (ARRAY['cancelled'::public.river_job_state, 'completed'::public.river_job_state, 'discarded'::public.river_job_state]))))),
     CONSTRAINT kind_length CHECK (((char_length(kind) > 0) AND (char_length(kind) < 128))),
     CONSTRAINT max_attempts_is_positive CHECK ((max_attempts > 0)),
@@ -359,6 +393,22 @@ ALTER TABLE ONLY public.images
 
 
 --
+-- Name: river_client river_client_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.river_client
+    ADD CONSTRAINT river_client_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: river_client_queue river_client_queue_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.river_client_queue
+    ADD CONSTRAINT river_client_queue_pkey PRIMARY KEY (river_client_id, name);
+
+
+--
 -- Name: river_job river_job_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -421,6 +471,13 @@ CREATE INDEX river_job_kind ON public.river_job USING btree (kind);
 
 
 --
+-- Name: river_job_kind_unique_key_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX river_job_kind_unique_key_idx ON public.river_job USING btree (kind, unique_key) WHERE (unique_key IS NOT NULL);
+
+
+--
 -- Name: river_job_metadata_index; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -457,6 +514,14 @@ ALTER TABLE ONLY public.images
 
 
 --
+-- Name: river_client_queue river_client_queue_river_client_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.river_client_queue
+    ADD CONSTRAINT river_client_queue_river_client_id_fkey FOREIGN KEY (river_client_id) REFERENCES public.river_client(id) ON DELETE CASCADE;
+
+
+--
 -- Name: themes themes_extension_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -474,5 +539,5 @@ ALTER TABLE ONLY public.themes
 --
 
 INSERT INTO public.schema_migrations (version) VALUES
-    ('20240714232441'),
-    ('20240820234134');
+    ('20240820234134'),
+    ('20240922015622');
