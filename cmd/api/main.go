@@ -3,18 +3,16 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
+	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/labstack/echo/v4"
-	echomiddleware "github.com/labstack/echo/v4/middleware"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/vscodethemes/backend/internal/api"
 	"github.com/vscodethemes/backend/internal/api/handlers"
 
-	"github.com/danielgtaylor/huma/v2/adapters/humaecho"
 	_ "github.com/danielgtaylor/huma/v2/formats/cbor"
 	"github.com/danielgtaylor/huma/v2/humacli"
 )
@@ -29,29 +27,31 @@ type Options struct {
 }
 
 func main() {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+
 	// Create a CLI app which takes a port option.
 	cli := humacli.New(func(hooks humacli.Hooks, options *Options) {
 		// Create a new database pool.
 		dbPool, err := pgxpool.New(context.Background(), options.DatabaseURL)
 		if err != nil {
-			log.Fatal(fmt.Errorf("failed to create db pool: %w", err))
+			logger.Error(fmt.Sprintf("failed to create database pool: %s", err))
+			os.Exit(1)
 		}
 
 		// Create insert-only river client.
-		riverClient, err := river.NewClient(riverpgxv5.New(dbPool), &river.Config{})
+		riverClient, err := river.NewClient(riverpgxv5.New(dbPool), &river.Config{
+			Logger: logger,
+		})
 		if err != nil {
-			log.Fatal(fmt.Errorf("failed to create river client: %w", err))
+			logger.Error(fmt.Sprintf("failed to create river client: %s", err))
+			os.Exit(1)
 		}
 
-		// Create a new router & API
-		e := echo.New()
-		e.Use(echomiddleware.Logger())
-
-		humaApi := humaecho.New(e, api.Config())
-
-		api.RegisterRoutes(humaApi, options.PublicKeyPath, options.Issuer, handlers.Handler{
+		// Create a new API server.
+		server := api.NewServer(logger, options.PublicKeyPath, options.Issuer, handlers.Handler{
 			DBPool:      dbPool,
 			RiverClient: riverClient,
+			Logger:      logger,
 		})
 
 		// TODO: Graceful shutdown.
@@ -61,7 +61,10 @@ func main() {
 		// Tell the CLI how to start your server.
 		hooks.OnStart(func() {
 			port := fmt.Sprintf("%d", options.Port)
-			e.Logger.Fatal(e.Start(net.JoinHostPort(options.Host, port)))
+			if err := server.Start(net.JoinHostPort(options.Host, port)); err != nil {
+				logger.Error(fmt.Sprintf("failed to start server: %s", err))
+				os.Exit(1)
+			}
 		})
 
 		hooks.OnStop(func() {
