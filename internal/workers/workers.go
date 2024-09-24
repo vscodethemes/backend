@@ -3,12 +3,15 @@ package workers
 import (
 	"context"
 	"fmt"
+	"math"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 	"github.com/vscodethemes/backend/internal/marketplace"
+	"github.com/vscodethemes/backend/internal/marketplace/qo"
 )
 
 // Workers
@@ -40,6 +43,33 @@ func RegisterWorkers(cfg RegisterWorkersConfig) error {
 	})
 
 	return nil
+}
+
+// Periodic Jobs
+
+func PeriodicJobs(maxExtensions int) []*river.PeriodicJob {
+	// Scan all extensions if maxExtensions is 0.
+	if maxExtensions == 0 {
+		maxExtensions = math.MaxInt
+	}
+
+	return []*river.PeriodicJob{
+		// Scan extensions every minute.
+		river.NewPeriodicJob(
+			river.PeriodicInterval(1*time.Minute),
+			func() (river.JobArgs, *river.InsertOpts) {
+				return ScanExtensionsArgs{
+					MaxExtensions:            maxExtensions,
+					SortBy:                   qo.SortByLastUpdated,
+					SortDirection:            qo.DirectionDesc,
+					Priority:                 ScanPriorityLow,
+					BatchSize:                50,
+					StopAtEqualPublishedDate: true,
+				}, nil
+			},
+			&river.PeriodicJobOpts{RunOnStart: true},
+		),
+	}
 }
 
 // Queues

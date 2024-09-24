@@ -28,6 +28,7 @@ func main() {
 	objectStoreAccessKeySecret := flag.String("object-store-access-key-secret", "test", "Object store access key secret")
 	cdnBaseUrl := flag.String("cdn-base-url", "http://s3.localhost.localstack.cloud:4566/images", "CDN base URL")
 	disableCleanup := flag.Bool("disable-cleanup", false, "Disable cleanup")
+	maxExtensions := flag.Int("max-extensions", 0, "Maximum number of extensions to scan, 0 for all")
 	flag.Parse()
 
 	if *dbUrl == "" {
@@ -70,9 +71,11 @@ func main() {
 	}
 
 	// Create river client.
+
 	riverClient, err := river.NewClient(riverpgxv5.New(dbPool), &river.Config{
-		Queues:  workers.QueueConfig(),
-		Workers: workersRegistry,
+		Queues:       workers.QueueConfig(),
+		PeriodicJobs: workers.PeriodicJobs(*maxExtensions),
+		Workers:      workersRegistry,
 		Logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 			Level: slog.LevelWarn,
 		})),
