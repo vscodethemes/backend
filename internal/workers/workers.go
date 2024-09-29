@@ -56,7 +56,7 @@ func PeriodicJobs(maxExtensions int) []*river.PeriodicJob {
 	return []*river.PeriodicJob{
 		// Scan extensions every minute.
 		river.NewPeriodicJob(
-			river.PeriodicInterval(1*time.Minute),
+			river.PeriodicInterval(5*time.Minute),
 			func() (river.JobArgs, *river.InsertOpts) {
 				return ScanExtensionsArgs{
 					MaxExtensions:            maxExtensions,
@@ -67,7 +67,7 @@ func PeriodicJobs(maxExtensions int) []*river.PeriodicJob {
 					StopAtEqualPublishedDate: true,
 				}, nil
 			},
-			&river.PeriodicJobOpts{RunOnStart: true},
+			&river.PeriodicJobOpts{RunOnStart: false},
 		),
 	}
 }

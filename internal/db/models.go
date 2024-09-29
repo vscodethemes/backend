@@ -90,6 +90,25 @@ type Image struct {
 	UpdatedAt pgtype.Timestamp
 }
 
+type RiverClient struct {
+	ID        string
+	CreatedAt pgtype.Timestamptz
+	Metadata  []byte
+	PausedAt  pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+type RiverClientQueue struct {
+	RiverClientID    string
+	Name             string
+	CreatedAt        pgtype.Timestamptz
+	MaxWorkers       int64
+	Metadata         []byte
+	NumJobsCompleted int64
+	NumJobsRunning   int64
+	UpdatedAt        pgtype.Timestamptz
+}
+
 type RiverJob struct {
 	ID          int64
 	State       RiverJobState
@@ -107,6 +126,7 @@ type RiverJob struct {
 	Metadata    []byte
 	Queue       string
 	Tags        []string
+	UniqueKey   []byte
 }
 
 type RiverLeader struct {

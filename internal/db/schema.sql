@@ -499,6 +499,13 @@ CREATE INDEX river_job_state_and_finalized_at_index ON public.river_job USING bt
 
 
 --
+-- Name: themes_tsv_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX themes_tsv_idx ON public.themes USING gist (tsv);
+
+
+--
 -- Name: themes tsvupdate; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -540,4 +547,5 @@ ALTER TABLE ONLY public.themes
 
 INSERT INTO public.schema_migrations (version) VALUES
     ('20240820234134'),
-    ('20240922015622');
+    ('20240922015622'),
+    ('20240930011343');
