@@ -39,10 +39,8 @@ func GetInfo(ctx context.Context, extensionPath string) (*GetInfoResult, error) 
 
 	output, err := cmd.Output()
 	if err != nil {
-		// Read stderr to get the error message.
-		fmt.Println("stderr: ", string(err.(*exec.ExitError).Stderr))
-
-		return nil, fmt.Errorf("failed to get info: %w", err)
+		stderr := string(err.(*exec.ExitError).Stderr)
+		return nil, fmt.Errorf("failed to get info: %s", stderr)
 	}
 
 	var result GetInfoResult

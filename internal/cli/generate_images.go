@@ -95,9 +95,8 @@ func GenerateImages(ctx context.Context, extensionPath string, theme ThemeContri
 
 	output, err := cmd.Output()
 	if err != nil {
-		// Read stderr to get the error message.
-		fmt.Println("stderr: ", string(err.(*exec.ExitError).Stderr))
-		return nil, fmt.Errorf("failed to get info: %w", err)
+		stderr := string(err.(*exec.ExitError).Stderr)
+		return nil, fmt.Errorf("failed to generate images: %s", stderr)
 	}
 
 	var result GenerateImagesResult
