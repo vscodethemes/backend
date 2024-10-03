@@ -39,15 +39,15 @@ func (q *Queries) SearchExtensions(ctx context.Context, arg SearchExtensionsPara
 	orderBy := "installs DESC"
 	if arg.SortBy == "relevance" {
 		orderBy = "text_rank DESC, color_distance ASC, installs DESC"
-	} else if arg.SortBy == "trending_daily" {
+	} else if arg.SortBy == "trendingDaily" {
 		orderBy = "trending_daily DESC"
-	} else if arg.SortBy == "trending_weekly" {
+	} else if arg.SortBy == "trendingWeekly" {
 		orderBy = "trending_weekly DESC"
-	} else if arg.SortBy == "trending_monthly" {
+	} else if arg.SortBy == "trendingMonthly" {
 		orderBy = "trending_monthly DESC"
 	} else if arg.SortBy == "rating" {
-		orderBy = "weighted_rating DESC"
-	} else if arg.SortBy == "updated_at" {
+		orderBy = "weightedRating DESC"
+	} else if arg.SortBy == "updatedAt" {
 		orderBy = "updated_at DESC"
 	}
 

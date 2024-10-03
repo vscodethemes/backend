@@ -27,12 +27,12 @@ var SearchExtensionsOperation = huma.Operation{
 
 type SearchExtensionsInput struct {
 	Text             string `query:"text" example:"monokai" doc:"The text to search for"`
-	EditorBackground string `query:"editor_background" example:"#000000" doc:"The editor background color to search for"`
+	EditorBackground string `query:"editorBackground" example:"#000000" doc:"The editor background color to search for"`
 	Language         string `query:"language" default:"js" example:"js" doc:"The language to return themes for"`
-	PageNumber       int    `query:"page_number" default:"1" example:"1" doc:"The page number to return"`
-	PageSize         int    `query:"page_size" default:"36" example:"10" doc:"The number of results to return"`
-	ColorDistance    int    `query:"color_distance" default:"10" example:"100" doc:"The maximum color distance to search for"`
-	SortBy           string `query:"sort_by" default:"relevance" example:"relevance" doc:"The sort order for results. Set to 'relevance', 'trending_daily', 'trending_weekly', 'trending_monthly', 'rating', or 'updated_at'."`
+	PageNumber       int    `query:"pageNumber" default:"1" example:"1" doc:"The page number to return"`
+	PageSize         int    `query:"pageSize" default:"36" example:"10" doc:"The number of results to return"`
+	ColorDistance    int    `query:"colorDistance" default:"10" example:"100" doc:"The maximum color distance to search for"`
+	SortBy           string `query:"sortBy" default:"relevance" example:"relevance" doc:"The sort order for results. Set to 'relevance', 'installs', 'trendingDaily', 'trendingWeekly', 'trendingMonthly', 'rating', or 'updatedAt'."`
 }
 
 type SearchExtensionsOutput struct {
