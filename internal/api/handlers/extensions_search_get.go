@@ -94,11 +94,18 @@ func (h Handler) SearchExtensions(ctx context.Context, input *SearchExtensionsIn
 				continue
 			}
 
+			activityBarBadgeBackground, err := colors.LabStringToHex(theme.ActivityBarBadgeBackground)
+			if err != nil {
+				h.logThemeError(ctx, "failed to convert activity_bar_badge_background to hex", row, theme, err)
+				continue
+			}
+
 			extension.Themes = append(extension.Themes, Theme{
-				Name:             theme.Name,
-				DisplayName:      theme.DisplayName,
-				EditorBackground: editorBackground,
-				URL:              theme.URL,
+				Name:                       theme.Name,
+				DisplayName:                theme.DisplayName,
+				EditorBackground:           editorBackground,
+				ActivityBarBadgeBackground: activityBarBadgeBackground,
+				URL:                        theme.URL,
 			})
 		}
 

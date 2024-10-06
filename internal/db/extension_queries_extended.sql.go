@@ -29,10 +29,11 @@ type SearchExtensionsRow struct {
 }
 
 type SearchExtensionsTheme struct {
-	Name             string `json:"name"`
-	URL              string `json:"url"`
-	DisplayName      string `json:"display_name"`
-	EditorBackground string `json:"editor_background"`
+	Name                       string `json:"name"`
+	URL                        string `json:"url"`
+	DisplayName                string `json:"display_name"`
+	EditorBackground           string `json:"editor_background"`
+	ActivityBarBadgeBackground string `json:"activity_bar_badge_background"`
 }
 
 func (q *Queries) SearchExtensions(ctx context.Context, arg SearchExtensionsParams) ([]SearchExtensionsRow, error) {
@@ -117,6 +118,7 @@ func (q *Queries) SearchExtensions(ctx context.Context, arg SearchExtensionsPara
 			t.name,
 			t.display_name,
 			t.editor_background,
+			t.activity_bar_badge_background,
 			i.url
 		FROM themes t
 		JOIN images i ON i.theme_id = t.id AND i.language = @language AND i.type = 'preview' AND i.format = 'svg'

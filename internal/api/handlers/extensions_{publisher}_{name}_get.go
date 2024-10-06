@@ -48,10 +48,11 @@ type Extension struct {
 }
 
 type Theme struct {
-	Name             string `json:"name"`
-	DisplayName      string `json:"displayName"`
-	EditorBackground string `json:"editorBackground"`
-	URL              string `json:"url"`
+	Name                       string `json:"name"`
+	DisplayName                string `json:"displayName"`
+	EditorBackground           string `json:"editorBackground"`
+	ActivityBarBadgeBackground string `json:"activityBarBadgeBackground"`
+	URL                        string `json:"url"`
 }
 
 func (h Handler) GetExtension(ctx context.Context, input *GetExtensionInput) (*GetExtensionOutput, error) {
