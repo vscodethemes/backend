@@ -26,13 +26,18 @@ var SearchExtensionsOperation = huma.Operation{
 }
 
 type SearchExtensionsInput struct {
-	Text             string `query:"text" example:"monokai" doc:"The text to search for"`
-	EditorBackground string `query:"editorBackground" example:"#000000" doc:"The editor background color to search for"`
-	Language         string `query:"language" default:"js" example:"js" doc:"The language to return themes for"`
-	PageNumber       int    `query:"pageNumber" default:"1" example:"1" doc:"The page number to return"`
-	PageSize         int    `query:"pageSize" default:"36" example:"10" doc:"The number of results to return"`
-	ColorDistance    int    `query:"colorDistance" default:"10" example:"100" doc:"The maximum color distance to search for"`
-	SortBy           string `query:"sortBy" default:"relevance" example:"relevance" doc:"The sort order for results. Set to 'relevance', 'installs', 'trendingDaily', 'trendingWeekly', 'trendingMonthly', 'rating', or 'updatedAt'."`
+	Text                 string `query:"text" example:"monokai" doc:"The text to search for"`
+	EditorBackground     string `query:"editorBackground" example:"#000000" doc:"The editor background color to search for"`
+	Language             string `query:"language" default:"js" example:"js" doc:"The language to return themes for"`
+	SortBy               string `query:"sortBy" default:"relevance" example:"relevance" doc:"The sort order for results. Set to 'relevance', 'installs', 'trendingDaily', 'trendingWeekly', 'trendingMonthly', 'rating', or 'updatedAt'."`
+	ColorDistance        int    `query:"colorDistance" default:"10" example:"100" doc:"The maximum color distance to search for"`
+	PublisherName        string `query:"publisherName" example:"sdras" doc:"The publisher name to filter by"`
+	ExtensionName        string `query:"extensionName" example:"night-owl" doc:"The extension name to filter by"`
+	ThemeName            string `query:"themeName" example:"night-owl" doc:"The theme name to filter by"`
+	ExtensionsPageNumber int    `query:"extensionsPageNumber" default:"1" example:"1" doc:"The page number for extensions"`
+	ExtensionsPageSize   int    `query:"extensionsPageSize" default:"10" example:"10" doc:"The page size for extensions"`
+	ThemesPageNumber     int    `query:"themesPageNumber" default:"1" example:"1" doc:"The page number for themes"`
+	ThemesPageSize       int    `query:"themesPageSize" default:"10" example:"10" doc:"The page size for themes"`
 }
 
 type SearchExtensionsOutput struct {
@@ -40,6 +45,24 @@ type SearchExtensionsOutput struct {
 		Total      int         `json:"total"`
 		Extensions []Extension `json:"extensions"`
 	}
+}
+
+type Extension struct {
+	Name                 string  `json:"name"`
+	DisplayName          string  `json:"displayName"`
+	PublisherName        string  `json:"publisherName"`
+	PublisherDisplayName string  `json:"publisherDisplayName"`
+	ShortDescription     *string `json:"shortDescription"`
+	Themes               []Theme `json:"themes"`
+	TotalThemes          int     `json:"totalThemes"`
+}
+
+type Theme struct {
+	Name                       string `json:"name"`
+	DisplayName                string `json:"displayName"`
+	EditorBackground           string `json:"editorBackground"`
+	ActivityBarBadgeBackground string `json:"activityBarBadgeBackground"`
+	URL                        string `json:"url"`
 }
 
 func (h Handler) SearchExtensions(ctx context.Context, input *SearchExtensionsInput) (*SearchExtensionsOutput, error) {
@@ -55,13 +78,18 @@ func (h Handler) SearchExtensions(ctx context.Context, input *SearchExtensionsIn
 	}
 
 	result, err := queries.SearchExtensions(ctx, db.SearchExtensionsParams{
-		Text:             input.Text,
-		EditorBackground: editorBackground,
-		Language:         input.Language,
-		PageNumber:       input.PageNumber,
-		PageSize:         input.PageSize,
-		ColorDistance:    input.ColorDistance,
-		SortBy:           input.SortBy,
+		Text:                 input.Text,
+		Language:             input.Language,
+		EditorBackground:     editorBackground,
+		SortBy:               input.SortBy,
+		ColorDistance:        input.ColorDistance,
+		PublisherName:        input.PublisherName,
+		ExtensionName:        input.ExtensionName,
+		ThemeName:            input.ThemeName,
+		ExtensionsPageNumber: input.ExtensionsPageNumber,
+		ExtensionsPageSize:   input.ExtensionsPageSize,
+		ThemesPageNumber:     input.ThemesPageNumber,
+		ThemesPageSize:       input.ThemesPageSize,
 	})
 
 	if err != nil {
@@ -81,6 +109,7 @@ func (h Handler) SearchExtensions(ctx context.Context, input *SearchExtensionsIn
 			DisplayName:          row.DisplayName,
 			PublisherName:        row.PublisherName,
 			PublisherDisplayName: row.PublisherDisplayName,
+			TotalThemes:          row.TotalThemes,
 		}
 
 		if row.ShortDescription.Valid {

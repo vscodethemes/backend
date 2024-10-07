@@ -32,7 +32,6 @@ func NewServer(logger *slog.Logger, publicKeyPath string, issuer string, h handl
 	// Register routes.
 	huma.Register(api, handlers.SearchExtensionsOperation, h.SearchExtensions)
 	huma.Register(api, handlers.ScanExtensionsOperation, h.ScanExtensions)
-	huma.Register(api, handlers.GetExtensionOperation, h.GetExtension)
 	huma.Register(api, handlers.SyncExtensionOperation, h.SyncExtension)
 	huma.Register(api, handlers.GetJobOperation, h.GetJob)
 	huma.Register(api, handlers.PauseJobsOperation, h.PauseJobs)
