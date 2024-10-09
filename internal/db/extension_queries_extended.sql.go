@@ -24,22 +24,53 @@ type SearchExtensionsParams struct {
 }
 
 type SearchExtensionsRow struct {
-	Total                int                     `db:"total"`
-	Name                 string                  `db:"name"`
-	DisplayName          string                  `db:"display_name"`
-	PublisherName        string                  `db:"publisher_name"`
-	PublisherDisplayName string                  `db:"publisher_display_name"`
-	ShortDescription     pgtype.Text             `db:"short_description"`
-	Themes               []SearchExtensionsTheme `db:"themes"`
-	TotalThemes          int                     `db:"total_themes"`
+	Total                int                            `db:"total"`
+	Name                 string                         `db:"name"`
+	DisplayName          string                         `db:"display_name"`
+	PublisherName        string                         `db:"publisher_name"`
+	PublisherDisplayName string                         `db:"publisher_display_name"`
+	ShortDescription     pgtype.Text                    `db:"short_description"`
+	Themes               []SearchExtensionsThemePartial `db:"themes"`
+	TotalThemes          int                            `db:"total_themes"`
+	Theme                *SearchExtensionsTheme         `db:"theme"`
 }
 
-type SearchExtensionsTheme struct {
+type SearchExtensionsThemePartial struct {
 	Name                       string `json:"name"`
 	URL                        string `json:"url"`
 	DisplayName                string `json:"display_name"`
 	EditorBackground           string `json:"editor_background"`
 	ActivityBarBadgeBackground string `json:"activity_bar_badge_background"`
+}
+
+type SearchExtensionsTheme struct {
+	Name                          string  `json:"name"`
+	URL                           string  `json:"url"`
+	DisplayName                   string  `json:"display_name"`
+	EditorBackground              string  `json:"editor_background"`
+	EditorForeground              string  `json:"editor_foreground"`
+	ActivityBarBackground         string  `json:"activity_bar_background"`
+	ActivityBarForeground         string  `json:"activity_bar_foreground"`
+	ActivityBarInActiveForeground string  `json:"activity_bar_in_active_foreground"`
+	ActivityBarBorder             *string `json:"activity_bar_border"`
+	ActivityBarActiveBorder       string  `json:"activity_bar_active_border"`
+	ActivityBarActiveBackground   *string `json:"activity_bar_active_background"`
+	ActivityBarBadgeBackground    string  `json:"activity_bar_badge_background"`
+	ActivityBarBadgeForeground    string  `json:"activity_bar_badge_foreground"`
+	TabsContainerBackground       *string `json:"tabs_container_background"`
+	TabsContainerBorder           *string `json:"tabs_container_border"`
+	StatusBarBackground           *string `json:"status_bar_background"`
+	StatusBarForeground           string  `json:"status_bar_foreground"`
+	StatusBarBorder               *string `json:"status_bar_border"`
+	TabActiveBackground           *string `json:"tab_active_background"`
+	TabInactiveBackground         *string `json:"tab_inactive_background"`
+	TabActiveForeground           string  `json:"tab_active_foreground"`
+	TabBorder                     string  `json:"tab_border"`
+	TabActiveBorder               *string `json:"tab_active_border"`
+	TabActiveBorderTop            *string `json:"tab_active_border_top"`
+	TitleBarActiveBackground      string  `json:"title_bar_active_background"`
+	TitleBarActiveForeground      string  `json:"title_bar_active_foreground"`
+	TitleBarBorder                *string `json:"title_bar_border"`
 }
 
 func (q *Queries) SearchExtensions(ctx context.Context, arg SearchExtensionsParams) ([]SearchExtensionsRow, error) {
@@ -66,8 +97,11 @@ func (q *Queries) SearchExtensions(ctx context.Context, arg SearchExtensionsPara
 		e.short_description,
 		e.publisher_name,
 		e.publisher_display_name,
-		jsonb_agg(to_jsonb(t2.*) - 'extension_id' - 'id' - 'total') AS themes,
-		max(t2.total) as total_themes
+		CASE
+			WHEN @theme_name = '' THEN COALESCE(max(t2.total), 0)
+			ELSE COALESCE(max(t2.total), 0) + 1 END AS total_themes,
+		COALESCE(jsonb_agg(to_jsonb(t2.*) - 'extension_id' - 'id' - 'total') FILTER (WHERE t2.id IS NOT NULL), '[]') AS themes,
+		jsonb_agg(to_jsonb(t3.*) - 'extension_id' - 'id' - 'tsv' - 'path' - 'created_at' - 'updated_at') -> 0 AS theme
 	FROM extensions e
 	JOIN (
 		WITH results AS (
@@ -137,10 +171,10 @@ func (q *Queries) SearchExtensions(ctx context.Context, arg SearchExtensionsPara
 		FROM themes t
 		JOIN images i ON i.theme_id = t.id AND i.language = @language AND i.type = 'preview' AND i.format = 'svg'
 		WHERE e.id = t.extension_id
+		AND
+			CASE WHEN @theme_name = '' then true
+			ELSE t.name != @theme_name END
 		ORDER BY
-			CASE
-				WHEN @theme_name = '' THEN true
-				ELSE t.name = @theme_name END DESC,
 			CASE
 				WHEN @editor_background = '' THEN 0
 				ELSE (@editor_background::cube <-> t.editor_background) END ASC,
@@ -148,6 +182,43 @@ func (q *Queries) SearchExtensions(ctx context.Context, arg SearchExtensionsPara
 		OFFSET @themes_offset
 		LIMIT @themes_limit
 	) t2 ON t2.extension_id = e.id
+	LEFT JOIN LATERAL (
+		SELECT 
+			t.extension_id,
+			t.name,
+			t.display_name,
+			t.editor_background,
+			t.editor_foreground,
+			t.activity_bar_background,
+			t.activity_bar_foreground,
+			t.activity_bar_in_active_foreground,
+			t.activity_bar_border,
+			t.activity_bar_active_border,
+			t.activity_bar_active_background,
+			t.activity_bar_badge_background,
+			t.activity_bar_badge_foreground,
+			t.tabs_container_background,
+			t.tabs_container_border,
+			t.status_bar_background,
+			t.status_bar_foreground,
+			t.status_bar_border,
+			t.tab_active_background,
+			t.tab_inactive_background,
+			t.tab_active_foreground,
+			t.tab_border,
+			t.tab_active_border,
+			t.tab_active_border_top,
+			t.title_bar_active_background,
+			t.title_bar_active_foreground,
+			t.title_bar_border,
+			i.url
+		FROM themes t
+		JOIN images i ON i.theme_id = t.id AND i.language = @language AND i.type = 'preview' AND i.format = 'svg'
+		WHERE e.id = t.extension_id
+		AND t.name = @theme_name
+		OFFSET 0
+		LIMIT 1
+	) t3 ON t3.extension_id = e.id AND @theme_name != ''
 	GROUP BY r.total, r.row_number, e.id
 	ORDER BY r.row_number ASC
 	`, orderBy)
