@@ -28,6 +28,21 @@ func LabStringToHex(lab string) (string, error) {
 	return LabToHex(l, a, b), nil
 }
 
+func LabStringToXyz(lab string) (float64, float64, float64, error) {
+	// Split into L, A, and B.
+	var l, a, b float64
+	_, err := fmt.Sscanf(lab, "(%f,%f,%f)", &l, &a, &b)
+
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("failed to parse LAB color %s: %w", lab, err)
+	}
+
+	// Convert to XYZ.
+	x, y, z := LabToXyz(l, a, b)
+
+	return x, y, z, nil
+}
+
 func HexToLab(hex string) (float64, float64, float64, error) {
 	sR, sG, sB, err := HexToRgb(hex)
 	if err != nil {

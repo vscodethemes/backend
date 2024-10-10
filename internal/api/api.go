@@ -36,6 +36,7 @@ func NewServer(logger *slog.Logger, publicKeyPath string, issuer string, h handl
 	huma.Register(api, handlers.GetJobOperation, h.GetJob)
 	huma.Register(api, handlers.PauseJobsOperation, h.PauseJobs)
 	huma.Register(api, handlers.ResumeJobsOperation, h.ResumeJobs)
+	huma.Register(api, handlers.GetColorsOperation, h.GetColors)
 
 	return e
 }

@@ -64,3 +64,61 @@ func (q *Queries) GetExtension(ctx context.Context, arg GetExtensionParams) (Get
 	)
 	return i, err
 }
+
+const listExtensions = `-- name: ListExtensions :many
+SELECT 
+	e.name,
+	e.display_name,
+	e.publisher_name,
+	e.publisher_display_name,
+	e.short_description,
+	e.published_at,
+	jsonb_agg(json_build_object(
+		'name', t.name,
+		'display_name', t.display_name,
+		'url', i.url
+	)) AS themes
+FROM extensions e
+LEFT JOIN themes t ON t.extension_id = e.id
+LEFT JOIN images i ON i.theme_id = t.id
+WHERE i.language = $1
+GROUP BY e.id
+`
+
+type ListExtensionsRow struct {
+	Name                 string
+	DisplayName          string
+	PublisherName        string
+	PublisherDisplayName string
+	ShortDescription     pgtype.Text
+	PublishedAt          pgtype.Timestamp
+	Themes               []byte
+}
+
+func (q *Queries) ListExtensions(ctx context.Context, language string) ([]ListExtensionsRow, error) {
+	rows, err := q.db.Query(ctx, listExtensions, language)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListExtensionsRow
+	for rows.Next() {
+		var i ListExtensionsRow
+		if err := rows.Scan(
+			&i.Name,
+			&i.DisplayName,
+			&i.PublisherName,
+			&i.PublisherDisplayName,
+			&i.ShortDescription,
+			&i.PublishedAt,
+			&i.Themes,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

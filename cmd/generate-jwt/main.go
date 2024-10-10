@@ -34,7 +34,7 @@ func main() {
 	builder := jwt.NewBuilder().
 		Issuer(*issuer).
 		IssuedAt(time.Now()).
-		Claim("scopes", []string{"extension:read", "extension:write", "jobs:read", "jobs:write"})
+		Claim("scopes", []string{"extension:read", "extension:write", "jobs:read", "jobs:write", "colors:read"})
 
 	// Set expiration if not "never".
 	if *expiresIn != "never" {
