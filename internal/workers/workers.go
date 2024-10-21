@@ -42,6 +42,15 @@ func RegisterWorkers(cfg RegisterWorkersConfig) error {
 		DBPool:            cfg.DBPool,
 	})
 
+	river.AddWorker(cfg.Registry, &UpdateAllExtensionsStatsWorker{
+		DBPool: cfg.DBPool,
+	})
+
+	river.AddWorker(cfg.Registry, &UpdateExtensionStatsWorker{
+		Marketplace: marketplace.NewClient(),
+		DBPool:      cfg.DBPool,
+	})
+
 	return nil
 }
 
@@ -69,7 +78,16 @@ func PeriodicJobs(maxExtensions int) []*river.PeriodicJob {
 			},
 			&river.PeriodicJobOpts{RunOnStart: false},
 		),
+		// Update all extension stats every 14 days.
+		river.NewPeriodicJob(
+			river.PeriodicInterval(24*14*time.Hour),
+			func() (river.JobArgs, *river.InsertOpts) {
+				return UpdateAllExtensionsStatsArgs{}, nil
+			},
+			&river.PeriodicJobOpts{RunOnStart: false},
+		),
 	}
+
 }
 
 // Queues
@@ -78,6 +96,7 @@ const (
 	ScanExtensionsQueue            = "scan-extensions"
 	SyncExtensionHighPriorityQueue = "sync-extension-high-priority"
 	SyncExtensionLowPriorityQueue  = "sync-extension-low-priority"
+	UpdateExtenstionStatsQueue     = "update-extension-stats"
 )
 
 func QueueConfig() map[string]river.QueueConfig {
@@ -86,6 +105,7 @@ func QueueConfig() map[string]river.QueueConfig {
 		SyncExtensionHighPriorityQueue: {MaxWorkers: 1},
 		SyncExtensionLowPriorityQueue:  {MaxWorkers: 1},
 		ScanExtensionsQueue:            {MaxWorkers: 1},
+		UpdateExtenstionStatsQueue:     {MaxWorkers: 1},
 	}
 }
 

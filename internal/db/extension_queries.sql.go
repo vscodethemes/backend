@@ -11,6 +11,36 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const getAllExtensionsForUpdate = `-- name: GetAllExtensionsForUpdate :many
+SELECT e.name, e.publisher_name
+FROM extensions e
+`
+
+type GetAllExtensionsForUpdateRow struct {
+	Name          string
+	PublisherName string
+}
+
+func (q *Queries) GetAllExtensionsForUpdate(ctx context.Context) ([]GetAllExtensionsForUpdateRow, error) {
+	rows, err := q.db.Query(ctx, getAllExtensionsForUpdate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllExtensionsForUpdateRow
+	for rows.Next() {
+		var i GetAllExtensionsForUpdateRow
+		if err := rows.Scan(&i.Name, &i.PublisherName); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getExtension = `-- name: GetExtension :one
 SELECT 
 	e.name,

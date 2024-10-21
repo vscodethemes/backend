@@ -39,3 +39,7 @@ LEFT JOIN themes t ON t.extension_id = e.id
 LEFT JOIN images i ON i.theme_id = t.id
 WHERE i.language = @language
 GROUP BY e.id;
+
+-- name: GetAllExtensionsForUpdate :many
+SELECT e.name, e.publisher_name
+FROM extensions e;
