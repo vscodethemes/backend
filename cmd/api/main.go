@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
@@ -54,10 +55,6 @@ func main() {
 			Logger:      logger,
 		})
 
-		// TODO: Graceful shutdown.
-		// https://echo.labstack.com/docs/cookbook/graceful-shutdown
-		// https://huma.rocks/how-to/graceful-shutdown
-
 		// Tell the CLI how to start your server.
 		hooks.OnStart(func() {
 			port := fmt.Sprintf("%d", options.Port)
@@ -68,7 +65,20 @@ func main() {
 		})
 
 		hooks.OnStop(func() {
-			dbPool.Close()
+			// This will block until all queries are finished. There does not seem to be a way to
+			// set a timeout on this. This comment from the author of pgx suggests to just terminate
+			// the application and let postgres handle the connection cleanup:
+			//  https://github.com/jackc/pgx/issues/802#issuecomment-668713840
+			// defer dbPool.Close()
+
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+
+			logger.Info("Shutting down server")
+			if err := server.Shutdown(ctx); err != nil {
+				logger.Error(fmt.Sprintf("failed to shutdown server: %s", err))
+				os.Exit(1)
+			}
 		})
 	})
 

@@ -192,8 +192,6 @@ func (w *SyncExtensionWorker) Work(ctx context.Context, job *river.Job[SyncExten
 	for themeIndex, result := range imagesResults {
 		themeSlug := slugGenerator(result.Theme.DisplayName)
 
-		// TODO: Save themeIndex as ordinal.
-
 		upsertThemeParams, err := convertUpsertThemeParams(themeSlug, result.Theme)
 		if err != nil {
 			return fmt.Errorf("failed to convert upsert theme params: %w", err)
@@ -243,8 +241,6 @@ func (w *SyncExtensionWorker) Work(ctx context.Context, job *river.Job[SyncExten
 				}
 
 				upsertThemeWithImagesParams[themeIndex].Images[languageIndex] = upsertImageParams
-
-				// TODO: OG image generation.
 			}
 
 			return nil

@@ -2,11 +2,15 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -91,8 +95,53 @@ func main() {
 
 	fmt.Println("Waiting for jobs...")
 
-	// TODO: Handle signals to gracefully stop the river client.
+	// Handle signals to gracefully stop the river client.
 	// https://riverqueue.com/docs/graceful-shutdown
+	sigintOrTerm := make(chan os.Signal, 1)
+	signal.Notify(sigintOrTerm, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		<-sigintOrTerm
+		fmt.Printf("Received SIGINT/SIGTERM; initiating soft stop (try to wait for jobs to finish)\n")
+
+		softStopCtx, softStopCtxCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer softStopCtxCancel()
+
+		go func() {
+			select {
+			case <-sigintOrTerm:
+				fmt.Println("Received SIGINT/SIGTERM again; initiating hard stop (cancel everything)")
+				softStopCtxCancel()
+			case <-softStopCtx.Done():
+				fmt.Println("Soft stop timeout; initiating hard stop (cancel everything)")
+			}
+		}()
+
+		err := riverClient.Stop(softStopCtx)
+		if err != nil && !errors.Is(err, context.DeadlineExceeded) && !errors.Is(err, context.Canceled) {
+			panic(err)
+		}
+		if err == nil {
+			fmt.Println("Soft stop succeeded")
+			return
+		}
+
+		hardStopCtx, hardStopCtxCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer hardStopCtxCancel()
+
+		// As long as all jobs respect context cancellation, StopAndCancel will
+		// always work. However, in the case of a bug where a job blocks despite
+		// being cancelled, it may be necessary to either ignore River's stop
+		// result (what's shown here) or have a supervisor kill the process.
+		err = riverClient.StopAndCancel(hardStopCtx)
+		if err != nil && errors.Is(err, context.DeadlineExceeded) {
+			fmt.Println("Hard stop timeout; ignoring stop procedure and exiting unsafely")
+		} else if err != nil {
+			panic(err)
+		}
+
+		// hard stop succeeded
+	}()
 
 	<-riverClient.Stopped()
 }
