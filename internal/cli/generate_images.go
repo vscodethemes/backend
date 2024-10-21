@@ -95,14 +95,21 @@ func GenerateImages(ctx context.Context, extensionPath string, theme ThemeContri
 
 	output, err := cmd.Output()
 	if err != nil {
-		stderr := string(err.(*exec.ExitError).Stderr)
-		return nil, fmt.Errorf("failed to generate images: %s", stderr)
+		var message string
+		exitError, ok := err.(*exec.ExitError)
+		if ok {
+			message = string(exitError.Stderr)
+		} else {
+			message = err.Error()
+		}
+
+		return nil, fmt.Errorf("failed to generate images: %s", message)
 	}
 
 	var result GenerateImagesResult
 	err = json.Unmarshal(output, &result)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal output: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal output: %s", output)
 	}
 
 	return &result, nil

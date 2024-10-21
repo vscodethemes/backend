@@ -56,7 +56,7 @@ type SyncExtensionWorker struct {
 }
 
 func (w *SyncExtensionWorker) Timeout(*river.Job[SyncExtensionArgs]) time.Duration {
-	return 5 * time.Minute
+	return 10 * time.Minute
 }
 
 func (w *SyncExtensionWorker) Work(ctx context.Context, job *river.Job[SyncExtensionArgs]) error {

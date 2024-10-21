@@ -92,10 +92,10 @@ export default async function parseTheme(
   }
 
   let type: ThemeType;
-  if (source.type === "dark" || themeContribute.uiTheme === "vs-dark") {
-    type = "dark";
-  } else if (source.type === "light" || themeContribute.uiTheme === "vs") {
+  if (source.type === "light" || themeContribute.uiTheme === "vs") {
     type = "light";
+  } else if (source.type === "dark" || themeContribute.uiTheme === "vs-dark") {
+    type = "dark";
   } else if (
     source.type === "hc-dark" ||
     themeContribute.uiTheme === "hc-black"
@@ -139,15 +139,18 @@ function normalizeColors(
     defaultValue?: string | Record<ThemeType, string | undefined>,
     backgroundColor?: string
   ) => {
-    let value = colors[key];
-    if (!value) {
-      if (typeof defaultValue === "string") {
-        value = defaultValue;
-      } else if (defaultValue) {
-        value = defaultValue[type];
-      }
+    let defaultValueForType;
+    if (typeof defaultValue === "string") {
+      defaultValueForType = defaultValue;
+    } else if (defaultValue) {
+      defaultValueForType = defaultValue[type];
     }
-    return normalizeColor(value, backgroundColor);
+
+    const value = colors[key] || defaultValueForType;
+    // Use the default value as the background color in case the value has an alpha channel.
+    const backgroundColorForType = backgroundColor || defaultValueForType;
+
+    return normalizeColor(value, backgroundColorForType);
   };
 
   // Defaults pulled from https://github.com/Microsoft/vscode/blob/main/src/vs/workbench/common/theme.ts.
@@ -221,19 +224,27 @@ function normalizeColors(
     throw new Error(`Missing color value for 'activityBar.inactiveForeground'`);
   }
 
-  const activityBarBorder = getColorValue("activityBar.border", {
-    dark: undefined,
-    light: undefined,
-    hcDark: contrastBorder,
-    hcLight: contrastBorder,
-  });
+  const activityBarBorder = getColorValue(
+    "activityBar.border",
+    {
+      dark: undefined,
+      light: undefined,
+      hcDark: contrastBorder,
+      hcLight: contrastBorder,
+    },
+    editorBackground
+  );
 
-  const activityBarActiveBorder = getColorValue("activityBar.activeBorder", {
-    dark: activityBarForeground,
-    light: activityBarForeground,
-    hcDark: contrastBorder,
-    hcLight: contrastBorder,
-  });
+  const activityBarActiveBorder = getColorValue(
+    "activityBar.activeBorder",
+    {
+      dark: activityBarForeground,
+      light: activityBarForeground,
+      hcDark: contrastBorder,
+      hcLight: contrastBorder,
+    },
+    editorBackground
+  );
   if (!activityBarActiveBorder) {
     throw new Error(`Missing color value for 'activityBar.activeBorder'`);
   }
@@ -270,10 +281,15 @@ function normalizeColors(
       light: "#F3F3F3",
       hcDark: undefined,
       hcLight: undefined,
-    }
+    },
+    editorBackground
   );
 
-  const tabsContainerBorder = getColorValue("editorGroupHeader.tabsBorder");
+  const tabsContainerBorder = getColorValue(
+    "editorGroupHeader.tabsBorder",
+    undefined,
+    editorBackground
+  );
 
   const statusBarBackground = getColorValue("statusBar.background", {
     dark: "#007ACC",
@@ -292,12 +308,16 @@ function normalizeColors(
     throw new Error(`Missing color value for 'statusBar.foreground'`);
   }
 
-  const statusBarBorder = getColorValue("statusBar.border", {
-    dark: undefined,
-    light: undefined,
-    hcDark: contrastBorder,
-    hcLight: contrastBorder,
-  });
+  const statusBarBorder = getColorValue(
+    "statusBar.border",
+    {
+      dark: undefined,
+      light: undefined,
+      hcDark: contrastBorder,
+      hcLight: contrastBorder,
+    },
+    statusBarBackground
+  );
 
   const tabActiveBackground = getColorValue(
     "tab.activeBackground",
@@ -321,24 +341,36 @@ function normalizeColors(
     throw new Error(`Missing color value for 'tab.activeForeground'`);
   }
 
-  const tabBorder = getColorValue("tab.border", {
-    dark: "#252526",
-    light: "#F3F3F3",
-    hcDark: contrastBorder,
-    hcLight: contrastBorder,
-  });
+  const tabBorder = getColorValue(
+    "tab.border",
+    {
+      dark: "#252526",
+      light: "#F3F3F3",
+      hcDark: contrastBorder,
+      hcLight: contrastBorder,
+    },
+    tabsContainerBackground
+  );
   if (!tabBorder) {
     throw new Error(`Missing color value for 'tab.border'`);
   }
 
-  const tabActiveBorder = getColorValue("tab.activeBorder");
+  const tabActiveBorder = getColorValue(
+    "tab.activeBorder",
+    undefined,
+    tabActiveBackground
+  );
 
-  const tabActiveBorderTop = getColorValue("tab.activeBorderTop", {
-    dark: undefined,
-    light: undefined,
-    hcDark: undefined,
-    hcLight: "#B5200D",
-  });
+  const tabActiveBorderTop = getColorValue(
+    "tab.activeBorderTop",
+    {
+      dark: undefined,
+      light: undefined,
+      hcDark: undefined,
+      hcLight: "#B5200D",
+    },
+    tabActiveBackground
+  );
 
   const titleBarActiveBackground = getColorValue("titleBar.activeBackground", {
     dark: "#3C3C3C",
@@ -360,12 +392,16 @@ function normalizeColors(
     throw new Error(`Missing color value for 'titleBar.activeForeground'`);
   }
 
-  const titleBarBorder = getColorValue("titleBar.border", {
-    dark: undefined,
-    light: undefined,
-    hcDark: contrastBorder,
-    hcLight: contrastBorder,
-  });
+  const titleBarBorder = getColorValue(
+    "titleBar.border",
+    {
+      dark: undefined,
+      light: undefined,
+      hcDark: contrastBorder,
+      hcLight: contrastBorder,
+    },
+    titleBarActiveBackground
+  );
 
   return {
     editorBackground,
