@@ -39,7 +39,7 @@ func (SyncExtensionArgs) Kind() string {
 
 func (SyncExtensionArgs) InsertOpts() river.InsertOpts {
 	return river.InsertOpts{
-		Queue:       SyncExtensionPriorityQueue,
+		Queue:       SyncExtensionHighPriorityQueue,
 		MaxAttempts: 5,
 	}
 }

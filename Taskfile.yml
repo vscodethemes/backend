@@ -20,7 +20,7 @@ tasks:
     deps:
       - db-wait
     cmds:
-      - go run cmd/workers/main.go --database-url "$DB_URL&application_name=workers" --dir ./data --disable-cleanup
+      - go run cmd/workers/main.go --database-url "$DB_URL&application_name=workers" --dir ./data  --disable-cleanup --max-extensions 10
 
   generate-sqlc:
     desc: Generate SQLC.
@@ -30,7 +30,7 @@ tasks:
   db:
     desc: Start the database
     cmds:
-      - docker-compose up db
+      - docker compose up db
 
   db-wait:
     desc: Wait for the database to be ready
@@ -65,7 +65,7 @@ tasks:
   river-ui:
     desc: Start the riverui server
     cmds:
-      - docker-compose up riverui
+      - docker compose up riverui
   
   lint:
     desc: Run linters
@@ -75,7 +75,7 @@ tasks:
   objectstore:
     desc: Start objectstore
     cmds:
-      - docker-compose up objectstore
+      - docker compose up objectstore
 
   generate-keyset:
     desc: Generate keyset

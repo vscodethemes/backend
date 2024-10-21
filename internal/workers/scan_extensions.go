@@ -58,9 +58,9 @@ func (w *ScanExtensionsWorker) Work(ctx context.Context, job *river.Job[ScanExte
 		return fmt.Errorf("error getting client from context: %w", err)
 	}
 
-	insertQueue := SyncExtensionBackfillQueue
+	insertQueue := SyncExtensionLowPriorityQueue
 	if job.Args.Priority == ScanPriorityHigh {
-		insertQueue = SyncExtensionPriorityQueue
+		insertQueue = SyncExtensionHighPriorityQueue
 	}
 
 	batchSize := 50

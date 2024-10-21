@@ -40,6 +40,27 @@ CREATE TYPE public.river_job_state AS ENUM (
 
 
 --
+-- Name: river_job_state_in_bitmask(bit, public.river_job_state); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.river_job_state_in_bitmask(bitmask bit, state public.river_job_state) RETURNS boolean
+    LANGUAGE sql IMMUTABLE
+    AS $$
+    SELECT CASE state
+        WHEN 'available' THEN get_bit(bitmask, 7)
+        WHEN 'cancelled' THEN get_bit(bitmask, 6)
+        WHEN 'completed' THEN get_bit(bitmask, 5)
+        WHEN 'discarded' THEN get_bit(bitmask, 4)
+        WHEN 'pending' THEN get_bit(bitmask, 3)
+        WHEN 'retryable' THEN get_bit(bitmask, 2)
+        WHEN 'running' THEN get_bit(bitmask, 1)
+        WHEN 'scheduled' THEN get_bit(bitmask, 0)
+        ELSE 0
+    END = 1;
+$$;
+
+
+--
 -- Name: tsv_trigger(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -202,6 +223,7 @@ CREATE TABLE public.river_job (
     queue text DEFAULT 'default'::text NOT NULL,
     tags character varying(255)[] DEFAULT '{}'::character varying[] NOT NULL,
     unique_key bytea,
+    unique_states bit(8),
     CONSTRAINT finalized_or_finalized_at_null CHECK ((((finalized_at IS NULL) AND (state <> ALL (ARRAY['cancelled'::public.river_job_state, 'completed'::public.river_job_state, 'discarded'::public.river_job_state]))) OR ((finalized_at IS NOT NULL) AND (state = ANY (ARRAY['cancelled'::public.river_job_state, 'completed'::public.river_job_state, 'discarded'::public.river_job_state]))))),
     CONSTRAINT kind_length CHECK (((char_length(kind) > 0) AND (char_length(kind) < 128))),
     CONSTRAINT max_attempts_is_positive CHECK ((max_attempts > 0)),
@@ -471,13 +493,6 @@ CREATE INDEX river_job_kind ON public.river_job USING btree (kind);
 
 
 --
--- Name: river_job_kind_unique_key_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX river_job_kind_unique_key_idx ON public.river_job USING btree (kind, unique_key) WHERE (unique_key IS NOT NULL);
-
-
---
 -- Name: river_job_metadata_index; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -496,6 +511,13 @@ CREATE INDEX river_job_prioritized_fetching_index ON public.river_job USING btre
 --
 
 CREATE INDEX river_job_state_and_finalized_at_index ON public.river_job USING btree (state, finalized_at) WHERE (finalized_at IS NOT NULL);
+
+
+--
+-- Name: river_job_unique_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX river_job_unique_idx ON public.river_job USING btree (unique_key) WHERE ((unique_key IS NOT NULL) AND (unique_states IS NOT NULL) AND public.river_job_state_in_bitmask(unique_states, state));
 
 
 --
@@ -548,4 +570,5 @@ ALTER TABLE ONLY public.themes
 INSERT INTO public.schema_migrations (version) VALUES
     ('20240820234134'),
     ('20240922015622'),
-    ('20240930011343');
+    ('20240930011343'),
+    ('20241021160435');

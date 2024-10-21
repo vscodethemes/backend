@@ -110,23 +110,24 @@ type RiverClientQueue struct {
 }
 
 type RiverJob struct {
-	ID          int64
-	State       RiverJobState
-	Attempt     int16
-	MaxAttempts int16
-	AttemptedAt pgtype.Timestamptz
-	CreatedAt   pgtype.Timestamptz
-	FinalizedAt pgtype.Timestamptz
-	ScheduledAt pgtype.Timestamptz
-	Priority    int16
-	Args        []byte
-	AttemptedBy []string
-	Errors      [][]byte
-	Kind        string
-	Metadata    []byte
-	Queue       string
-	Tags        []string
-	UniqueKey   []byte
+	ID           int64
+	State        RiverJobState
+	Attempt      int16
+	MaxAttempts  int16
+	AttemptedAt  pgtype.Timestamptz
+	CreatedAt    pgtype.Timestamptz
+	FinalizedAt  pgtype.Timestamptz
+	ScheduledAt  pgtype.Timestamptz
+	Priority     int16
+	Args         []byte
+	AttemptedBy  []string
+	Errors       [][]byte
+	Kind         string
+	Metadata     []byte
+	Queue        string
+	Tags         []string
+	UniqueKey    []byte
+	UniqueStates pgtype.Bits
 }
 
 type RiverLeader struct {

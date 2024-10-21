@@ -75,16 +75,17 @@ func PeriodicJobs(maxExtensions int) []*river.PeriodicJob {
 // Queues
 
 const (
-	ScanExtensionsQueue        = "scan-extensions"
-	SyncExtensionPriorityQueue = "sync-extension-priority"
-	SyncExtensionBackfillQueue = "sync-extension-backfill"
+	ScanExtensionsQueue            = "scan-extensions"
+	SyncExtensionHighPriorityQueue = "sync-extension-high-priority"
+	SyncExtensionLowPriorityQueue  = "sync-extension-low-priority"
 )
 
 func QueueConfig() map[string]river.QueueConfig {
 	return map[string]river.QueueConfig{
-		SyncExtensionPriorityQueue: {MaxWorkers: 1},
-		SyncExtensionBackfillQueue: {MaxWorkers: 1},
-		ScanExtensionsQueue:        {MaxWorkers: 1},
+		river.QueueDefault:             {MaxWorkers: 1},
+		SyncExtensionHighPriorityQueue: {MaxWorkers: 1},
+		SyncExtensionLowPriorityQueue:  {MaxWorkers: 1},
+		ScanExtensionsQueue:            {MaxWorkers: 1},
 	}
 }
 
