@@ -9,6 +9,23 @@ import (
 	"context"
 )
 
+const deleteExtensionThemesNotIn = `-- name: DeleteExtensionThemesNotIn :exec
+
+DELETE FROM themes t
+WHERE t.extension_id = $1 
+AND t.id != ALL($2::bigint[])
+`
+
+type DeleteExtensionThemesNotInParams struct {
+	ExtensionID int64
+	ThemeIds    []int64
+}
+
+func (q *Queries) DeleteExtensionThemesNotIn(ctx context.Context, arg DeleteExtensionThemesNotInParams) error {
+	_, err := q.db.Exec(ctx, deleteExtensionThemesNotIn, arg.ExtensionID, arg.ThemeIds)
+	return err
+}
+
 const getColorCounts = `-- name: GetColorCounts :many
 
 SELECT

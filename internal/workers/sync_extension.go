@@ -562,6 +562,7 @@ func saveExtension(ctx context.Context, dbPool *pgxpool.Pool, extension db.Upser
 		}
 
 		// Upsert themes and images.
+		upsertedThemeIds := []int64{}
 		for _, themeWithImages := range themes {
 			// Set extension ID for each theme.
 			themeWithImages.Theme.ExtensionID = extension.ID
@@ -571,6 +572,8 @@ func saveExtension(ctx context.Context, dbPool *pgxpool.Pool, extension db.Upser
 			if err != nil {
 				return fmt.Errorf("failed to upsert theme: %w", err)
 			}
+
+			upsertedThemeIds = append(upsertedThemeIds, theme.ID)
 
 			// Upsert images.
 			for _, image := range themeWithImages.Images {
@@ -584,7 +587,14 @@ func saveExtension(ctx context.Context, dbPool *pgxpool.Pool, extension db.Upser
 			}
 		}
 
-		// TODO: Delete old themes and images.
+		// Delete old themes and images.
+		err = queries.DeleteExtensionThemesNotIn(ctx, db.DeleteExtensionThemesNotInParams{
+			ExtensionID: extension.ID,
+			ThemeIds:    upsertedThemeIds,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to delete old themes: %w", err)
+		}
 
 		return nil
 	})
