@@ -20,7 +20,7 @@ tasks:
     deps:
       - db-wait
     cmds:
-      - go run cmd/workers/main.go --database-url "$DB_URL&application_name=workers" --dir ./data  --disable-cleanup --max-extensions 10
+      - go run cmd/workers/main.go --database-url "$DB_URL&application_name=workers" --dir ./data --max-extensions 10
 
   generate-sqlc:
     desc: Generate SQLC.
@@ -86,3 +86,8 @@ tasks:
     desc: Generate JWT
     cmds:
       - go run cmd/generate-jwt/main.go --issuer localhost:$API_PORT
+  
+  pg-dump:
+    desc: Dump the database
+    cmds:
+      - pg_dump $DB_URL > ./data/dump.sql
