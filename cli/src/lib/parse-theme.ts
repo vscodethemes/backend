@@ -201,12 +201,16 @@ function normalizeColors(
     throw new Error(`Missing color value for 'activityBar.background'`);
   }
 
-  const activityBarForeground = getColorValue("activityBar.foreground", {
-    dark: "#FFFFFF",
-    light: "#FFFFFF",
-    hcDark: "#FFFFFF",
-    hcLight: editorForeground,
-  });
+  const activityBarForeground = getColorValue(
+    "activityBar.foreground",
+    {
+      dark: "#FFFFFF",
+      light: "#FFFFFF",
+      hcDark: "#FFFFFF",
+      hcLight: editorForeground,
+    },
+    activityBarBackground
+  );
   if (!activityBarForeground) {
     throw new Error(`Missing color value for 'activityBar.foreground'`);
   }
@@ -218,7 +222,8 @@ function normalizeColors(
       light: alpha(activityBarForeground, 0.4),
       hcDark: "#FFFFFF",
       hcLight: editorForeground,
-    }
+    },
+    activityBarBackground
   );
   if (!activityBarInActiveForeground) {
     throw new Error(`Missing color value for 'activityBar.inactiveForeground'`);
@@ -250,7 +255,9 @@ function normalizeColors(
   }
 
   const activityBarActiveBackground = getColorValue(
-    "activityBar.activeBackground"
+    "activityBar.activeBackground",
+    undefined,
+    activityBarBackground
   );
 
   const activityBarBadgeBackground = getColorValue(

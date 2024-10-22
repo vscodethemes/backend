@@ -46,6 +46,12 @@ export default function renderSvg(
     svg += `<path d="M35.8 20H36.8V311H35.8V20Z" fill="${colors.activityBarBorder}" />`;
   }
 
+  if (colors.activityBarActiveBackground) {
+    svg += `<rect x="0" y="20" width="36" height="36" fill="${colors.activityBarActiveBackground}" />`;
+  }
+
+  svg += `<rect x="0" y="20" width="1.5" height="36" fill="${colors.activityBarActiveBorder}" />`;
+
   // Explorer
   svg += `<path fill-rule="evenodd" clip-rule="evenodd" d="M15.625 28H22.375L25.75 31.375V40.45L24.775 41.5H21.25V44.95L20.2 46H11.125L10 44.95V33.625L11.125 32.5H14.5V29.125L15.625 28ZM21.25 29.125V32.5H24.625V40.375H15.625V29.125H21.25ZM24.175 31.375L22.375 29.575V31.375H24.175ZM14.5 33.625V40.45L15.625 41.5H20.125V44.875H11.125V33.625H14.5Z" fill="${colors.activityBarForeground}" />`;
   // Search
