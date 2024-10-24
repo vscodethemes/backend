@@ -38,6 +38,7 @@ func NewServer(logger *slog.Logger, publicKeyPath string, issuer string, h handl
 	huma.Register(api, handlers.PauseJobsOperation, h.PauseJobs)
 	huma.Register(api, handlers.ResumeJobsOperation, h.ResumeJobs)
 	huma.Register(api, handlers.GetColorsOperation, h.GetColors)
+	huma.Register(api, handlers.ForceSyncAllExtensionsOperation, h.ForceSyncAllExtensions)
 
 	return e
 }
