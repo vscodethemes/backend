@@ -72,6 +72,24 @@ const defaultLanguages = [
     template: templates.php,
     tabName: "main.php",
   },
+
+  {
+    name: "Ruby",
+    extName: "rb",
+    scopeName: "source.ruby",
+    grammar: "ruby.tmLanguage.json",
+    template: templates.ruby,
+    tabName: "main.rb",
+  },
+
+  {
+    name: "Rust",
+    extName: "rs",
+    scopeName: "source.rust",
+    grammar: "rust.tmLanguage.json",
+    template: templates.rust,
+    tabName: "main.rs",
+  },
 ] as const;
 
 export default defaultLanguages;

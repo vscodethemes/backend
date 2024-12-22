@@ -123,3 +123,35 @@ class Theme extends Model {
   }
 }
 `;
+
+export const rust = `struct Point {
+  x: f64,
+}
+
+impl Point {
+  // Calculate the difference and square root
+  fn calc(&self, other: &Point) -> f64 {
+      (self.x - other.x).abs().sqrt()
+  }
+}
+fn main() {
+  let p = Point { x: 4.0 };
+  println!("Calc:{:.2}", p.calc(&Point { x: 2.0 }));
+}
+`;
+
+export const ruby = `class Calculator
+  SOME_CONST = 'string'.freeze
+
+  attr_accessor :ops
+
+  def initialize(ops = [])
+    @ops = ops
+  end
+
+  # Execute each operation and print the result
+  def calculate
+    ops.each { |op| puts op.call }
+  end
+end
+`;
