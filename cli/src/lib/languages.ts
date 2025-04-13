@@ -90,6 +90,15 @@ const defaultLanguages = [
     template: templates.rust,
     tabName: "main.rs",
   },
+
+  {
+    name: "Elixir",
+    extName: "ex",
+    scopeName: "source.elixir",
+    grammar: "elixir.tmLanguage.json",
+    template: templates.elixir,
+    tabName: "main.ex",
+  },
 ] as const;
 
 export default defaultLanguages;

@@ -153,5 +153,20 @@ export const ruby = `class Calculator
   def calculate
     ops.each { |op| puts op.call }
   end
+`;
+
+export const elixir = `defmodule TextAnalyzer do
+  @default_text "Hey there!"
+
+  def count_words(text \\\\ @default_text) do
+    text
+    |> String.split()
+    |> length()
+  end
 end
+
+# Print word count
+"Hello world!"
+|> TextAnalyzer.count_words()
+|> IO.puts()
 `;
