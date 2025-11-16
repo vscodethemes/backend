@@ -170,3 +170,19 @@ end
 |> TextAnalyzer.count_words()
 |> IO.puts()
 `;
+
+export const swift = `import Foundation
+// Simple greeter in Swift
+func greet(_ name: String) -> String {
+  "Hello \\(name)!"
+}
+
+struct Greeter {
+  let names = ["Ada", "Linus"]
+  func greetAll() {
+    names.forEach { print(greet($0)) }
+  }
+}
+
+Greeter().greetAll()
+`;
