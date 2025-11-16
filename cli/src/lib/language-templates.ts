@@ -62,11 +62,11 @@ class Foo(object):
 
 export const go = `type config struct {
     port int
-} 
+}
 
 func main() {
     var cfg config
-  
+
     flag.IntVar(&cfg.port, "port", 4000)
     flag.Parse()
 
@@ -78,7 +78,7 @@ func main() {
 
 export const java = `public class Main {
   int num = 1;
-  boolean bool = true;  
+  boolean bool = true;
   String foo = "bar";
 
   static void printMessage() {
@@ -98,9 +98,9 @@ export const cpp = `#include <iostream>
 int main() {
   string line;
   ifstream file;
-  
+
   file.open("myfile.txt");
-  
+
   // Read file line by line.
   while(getline(myfile, line)) {
      printf("%s", line.c_str());
@@ -172,17 +172,17 @@ end
 `;
 
 export const swift = `import Foundation
-// Simple greeter in Swift
-func greet(_ name: String) -> String {
-  "Hello \\(name)!"
+struct Temperature {
+    var celsius: Double
 }
 
-struct Greeter {
-  let names = ["Ada", "Linus"]
-  func greetAll() {
-    names.forEach { print(greet($0)) }
-  }
+extension Temperature {
+    // Convert Celsius to Fahrenheit
+    func toFahrenheit() -> Double {
+        return (celsius * 9/5) + 32
+    }
 }
 
-Greeter().greetAll()
+let t = Temperature(celsius: 25.0)
+print(String(format: "%.1f°F", t.toFahrenheit()))
 `;
