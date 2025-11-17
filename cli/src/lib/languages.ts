@@ -99,6 +99,15 @@ const defaultLanguages = [
     template: templates.elixir,
     tabName: "main.ex",
   },
+
+  {
+    name: "Swift",
+    extName: "swift",
+    scopeName: "source.swift",
+    grammar: "swift.tmLanguage.json",
+    template: templates.swift,
+    tabName: "main.swift",
+  },
 ] as const;
 
 export default defaultLanguages;
