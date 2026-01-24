@@ -171,6 +171,22 @@ end
 |> IO.puts()
 `;
 
+export const dart = `import 'dart:math';
+
+class Circle {
+  final double radius;
+  Circle(this.radius);
+
+  // Calculate the area of the circle
+  double get area => pi * radius * radius;
+}
+
+void main() {
+  final circle = Circle(5.0);
+  print('Area: \${circle.area.toStringAsFixed(2)}');
+}
+`;
+
 export const swift = `import Foundation
 struct Temperature {
     var celsius: Double
