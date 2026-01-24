@@ -20,6 +20,15 @@ const defaultLanguages = [
   },
 
   {
+    name: "Dart",
+    extName: "dart",
+    scopeName: "source.dart",
+    grammar: "dart.tmLanguage.json",
+    template: templates.dart,
+    tabName: "main.dart",
+  },
+
+  {
     name: "HTML",
     extName: "html",
     scopeName: "text.html.basic",
