@@ -182,5 +182,5 @@ type Theme struct {
 	TitleBarBorder                *string
 	CreatedAt                     pgtype.Timestamp
 	UpdatedAt                     pgtype.Timestamp
-	Tsv                           string
+	Tsv                           pgtype.TSVector
 }

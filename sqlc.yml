@@ -17,5 +17,7 @@ sql:
             go_type:
               type: "string"
               pointer: true
+          # pgx >= 5.9 decodes tsvector in binary format, which can't be scanned
+          # into a string. It must be scanned into a pgtype.TSVector.
           - column: "themes.tsv"
-            go_type: "string"
+            go_type: "github.com/jackc/pgx/v5/pgtype.TSVector"
