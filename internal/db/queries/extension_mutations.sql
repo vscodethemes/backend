@@ -1,35 +1,37 @@
 -- name: UpsertExtension :one
 insert into "extensions" (
-  "vsc_extension_id", 
-  "name", 
-  "display_name", 
-  "short_description", 
+  "vsc_extension_id",
+  "name",
+  "display_name",
+  "short_description",
   "publisher_id",
   "publisher_name",
   "publisher_display_name",
-  "installs", 
+  "installs",
   "trending_daily",
   "trending_weekly",
   "trending_monthly",
   "weighted_rating",
   "published_at",
-  "released_at"
+  "released_at",
+  "marketplace_updated_at"
 )
 values (
-  @vsc_extension_id, 
-  @name, 
-  @display_name, 
-  @short_description, 
+  @vsc_extension_id,
+  @name,
+  @display_name,
+  @short_description,
   @publisher_id,
   @publisher_name,
   @publisher_display_name,
-  @installs, 
+  @installs,
   @trending_daily,
   @trending_weekly,
   @trending_monthly,
   @weighted_rating,
   @published_at,
-  @released_at
+  @released_at,
+  @marketplace_updated_at
 )
 on conflict("vsc_extension_id") do update set
   "name" = excluded."name",
@@ -45,5 +47,6 @@ on conflict("vsc_extension_id") do update set
   "weighted_rating" = excluded."weighted_rating",
   "published_at" = excluded."published_at",
   "released_at" = excluded."released_at",
+  "marketplace_updated_at" = coalesce(excluded."marketplace_updated_at", "extensions"."marketplace_updated_at"),
   "updated_at" = now()
 returning *;

@@ -28,13 +28,13 @@ var ScanExtensionsOperation = huma.Operation{
 }
 
 type ScanExtensionsInput struct {
-	Priority                 workers.ScanPriority `query:"priority" default:"low" example:"low" doc:"Priority of the scan, set to 'low' or 'high'."`
-	SortBy                   string               `query:"sortBy" default:"lastUpdated" example:"lastUpdated" doc:"Type of scan to perform, set to 'lastUpdated' or 'mostInstalled'."`
-	SortDirection            string               `query:"direction" default:"desc" example:"desc" doc:"Direction of the sort, set to 'asc' or 'desc'."`
-	BatchSize                int                  `query:"batchSize" default:"50" example:"100" doc:"Number of extensions to scan in each batch."`
-	MaxExtensions            int                  `query:"maxExtensions" example:"200" doc:"Maximum number of extensions to scan. If not provided, all extensions will be scanned."`
-	StopAtEqualPublishedDate bool                 `query:"stopAtEqualPublishedDate" default:"false" example:"true" doc:"Stop scanning when the published date is equal to the last scanned extension."`
-	ForceUpdate              bool                 `query:"forceUpdate" default:"false" example:"true" doc:"Force the extension to update even if publisehd date is equal."`
+	Priority            workers.ScanPriority `query:"priority" default:"low" example:"low" doc:"Priority of the scan, set to 'low' or 'high'."`
+	SortBy              string               `query:"sortBy" default:"lastUpdated" example:"lastUpdated" doc:"Type of scan to perform, set to 'lastUpdated' or 'mostInstalled'."`
+	SortDirection       string               `query:"direction" default:"desc" example:"desc" doc:"Direction of the sort, set to 'asc' or 'desc'."`
+	BatchSize           int                  `query:"batchSize" default:"50" example:"100" doc:"Number of extensions to scan in each batch."`
+	MaxExtensions       int                  `query:"maxExtensions" example:"200" doc:"Maximum number of extensions to scan. If not provided, all extensions will be scanned."`
+	StopAtFirstUpToDate bool                 `query:"stopAtFirstUpToDate" default:"false" example:"true" doc:"Stop scanning when we reach an extension that is up to date."`
+	ForceUpdate         bool                 `query:"forceUpdate" default:"false" example:"true" doc:"Force the extension to update even if it is up to date."`
 }
 
 type ScanExtensions struct {
@@ -72,13 +72,13 @@ func (h Handler) ScanExtensions(ctx context.Context, input *ScanExtensionsInput)
 	var job *rivertype.JobRow
 	err := pgx.BeginFunc(ctx, h.DBPool, func(tx pgx.Tx) error {
 		result, err := h.RiverClient.InsertTx(ctx, tx, workers.ScanExtensionsArgs{
-			Priority:                 priority,
-			SortBy:                   sortBy,
-			SortDirection:            sortDirection,
-			BatchSize:                batchSize,
-			MaxExtensions:            maxExtensions,
-			StopAtEqualPublishedDate: input.StopAtEqualPublishedDate,
-			Force:                    input.ForceUpdate,
+			Priority:            priority,
+			SortBy:              sortBy,
+			SortDirection:       sortDirection,
+			BatchSize:           batchSize,
+			MaxExtensions:       maxExtensions,
+			StopAtFirstUpToDate: input.StopAtFirstUpToDate,
+			Force:               input.ForceUpdate,
 		}, nil)
 		if err != nil {
 			return fmt.Errorf("failed to insert job: %w", err)
