@@ -251,6 +251,13 @@ func (w *SyncExtensionWorker) Work(ctx context.Context, job *river.Job[SyncExten
 		return err
 	}
 
+	// Set marketplace updated at.
+	marketplaceUpdatedAt, err := time.Parse(time.RFC3339, extension.LastUpdated)
+	if err != nil {
+		return fmt.Errorf("failed to parse marketplace updated at: %w", err)
+	}
+	upsertExtensionParams.MarketplaceUpdatedAt = db.Timestamp(&marketplaceUpdatedAt)
+
 	log.Infof("Saving extension to database")
 	if err = saveExtension(ctx, w.DBPool, upsertExtensionParams, upsertThemeWithImagesParams); err != nil {
 		return fmt.Errorf("failed to save extension to database: %w", err)
@@ -275,12 +282,15 @@ func isExtensionUpToDate(ctx context.Context, queries *db.Queries, extension mar
 		return false, fmt.Errorf("failed to get extension: %w", err)
 	}
 
-	publishedAt, err := time.Parse(time.RFC3339, extension.PublishedDate)
+	lastUpdated, err := time.Parse(time.RFC3339, extension.LastUpdated)
 	if err != nil {
-		return false, fmt.Errorf("failed to parse publishedAt: %w", err)
+		return false, fmt.Errorf("failed to parse lastUpdated: %w", err)
 	}
 
-	return savedExtension.PublishedAt.Time.Equal(publishedAt), nil
+	isUpToDate := savedExtension.MarketplaceUpdatedAt.Valid &&
+		!savedExtension.MarketplaceUpdatedAt.Time.Before(lastUpdated)
+
+	return isUpToDate, nil
 }
 
 func convertUpsertExtensionParams(extension marketplace.ExtensionResult) (db.UpsertExtensionParams, error) {

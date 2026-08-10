@@ -68,12 +68,12 @@ func PeriodicJobs(maxExtensions int) []*river.PeriodicJob {
 			river.PeriodicInterval(5*time.Minute),
 			func() (river.JobArgs, *river.InsertOpts) {
 				return ScanExtensionsArgs{
-					MaxExtensions:            maxExtensions,
-					SortBy:                   qo.SortByLastUpdated,
-					SortDirection:            qo.DirectionDesc,
-					Priority:                 ScanPriorityLow,
-					BatchSize:                50,
-					StopAtEqualPublishedDate: true,
+					MaxExtensions:       maxExtensions,
+					SortBy:              qo.SortByLastUpdated,
+					SortDirection:       qo.DirectionDesc,
+					Priority:            ScanPriorityLow,
+					BatchSize:           50,
+					StopAtFirstUpToDate: true,
 				}, nil
 			},
 			&river.PeriodicJobOpts{RunOnStart: false},

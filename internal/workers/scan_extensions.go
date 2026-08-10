@@ -22,13 +22,13 @@ const (
 )
 
 type ScanExtensionsArgs struct {
-	MaxExtensions            int                     `json:"maxExtensions"`
-	SortBy                   qo.QueryOptionSortBy    `json:"sortBy"`
-	SortDirection            qo.QueryOptionDirection `json:"sortDirection"`
-	Priority                 ScanPriority            `json:"priority"`
-	BatchSize                int                     `json:"batchSize"`
-	StopAtEqualPublishedDate bool                    `json:"stopAtEqualPublishedDate"`
-	Force                    bool                    `json:"force"`
+	MaxExtensions       int                     `json:"maxExtensions"`
+	SortBy              qo.QueryOptionSortBy    `json:"sortBy"`
+	SortDirection       qo.QueryOptionDirection `json:"sortDirection"`
+	Priority            ScanPriority            `json:"priority"`
+	BatchSize           int                     `json:"batchSize"`
+	StopAtFirstUpToDate bool                    `json:"stopAtFirstUpToDate"`
+	Force               bool                    `json:"force"`
 }
 
 func (ScanExtensionsArgs) Kind() string {
@@ -108,10 +108,10 @@ func (w *ScanExtensionsWorker) Work(ctx context.Context, job *river.Job[ScanExte
 				break
 			}
 
-			// If the job is configured to stop at the first extension with the same published date,
+			// If the job is configured to stop at the first extension that's up to date,
 			// check if the extension is up to date and stop scanning if it is. This is useful when
 			// sorting by last updated data.
-			if job.Args.StopAtEqualPublishedDate {
+			if job.Args.StopAtFirstUpToDate {
 				isUpToDate, err := isExtensionUpToDate(ctx, queries, extension)
 				if err != nil {
 					return fmt.Errorf("failed to check if extension is up to date: %w", err)

@@ -1,6 +1,7 @@
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -110,7 +111,8 @@ CREATE TABLE public.extensions (
     published_at timestamp without time zone NOT NULL,
     released_at timestamp without time zone NOT NULL,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
-    updated_at timestamp without time zone DEFAULT now() NOT NULL
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    marketplace_updated_at timestamp without time zone
 );
 
 
@@ -571,4 +573,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20240820234134'),
     ('20240922015622'),
     ('20240930011343'),
-    ('20241021160435');
+    ('20241021160435'),
+    ('20260810144810');
