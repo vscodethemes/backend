@@ -53,7 +53,8 @@ export const python = `import os
 class Foo(object):
     def __init__(self):
         num = 42
-        print(num)
+        self.baz = num
+        print(self.baz)
 
     @property
     def foo(self):
